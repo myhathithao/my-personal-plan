@@ -13,6 +13,14 @@
    ============================================================ */
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBbxYjdkm0AC4ZafzAofNOp44U3v8C98Mo",
   authDomain: "personal-planner-8a1f8.firebaseapp.com",
@@ -22,5 +30,9 @@ const firebaseConfig = {
   appId: "1:804980360337:web:8ca89a51cfa13e6a12eb30",
   measurementId: "G-XYWPH4CBY6"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 
