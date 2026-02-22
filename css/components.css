@@ -1,0 +1,329 @@
+/* ===================================================
+   COMPONENTS.CSS — Habit Tracker, Calendar extras,
+   Ideas Board, Todo List, Idea Cards
+=================================================== */
+
+/* ===== TODO LIST ===== */
+.todo-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--beige);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    border: 1.5px solid var(--beige-dark);
+    transition: background var(--transition);
+    animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.todo-item:hover {
+    background: var(--green-light);
+}
+
+.todo-check {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--pink-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.todo-text {
+    flex: 1;
+    font-size: 14.5px;
+    color: var(--text-dark);
+}
+
+.todo-item.done .todo-text {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+.todo-delete {
+    font-size: 16px;
+    color: var(--text-light);
+    background: none;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.todo-delete:hover {
+    color: #C0505A;
+    background: #FFE4E4;
+}
+
+/* ===== WEEKLY GOAL ===== */
+.weekly-goal-card .weekly-goal-display {
+    font-size: 15px;
+    color: var(--text-dark);
+    font-style: italic;
+    line-height: 1.6;
+    min-height: 24px;
+}
+
+/* ===== IDEA BOARD ===== */
+.idea-form-card {
+    padding: 22px 28px;
+}
+
+.idea-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.idea-form-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ideas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+}
+
+.idea-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 22px;
+    border: 1.5px solid var(--pink-light);
+    box-shadow: 0 3px 14px var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform var(--transition), box-shadow var(--transition);
+    animation: slideIn 0.25s ease;
+}
+
+.idea-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px var(--shadow-md);
+}
+
+.idea-card-title {
+    font-size: 15.5px;
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+.idea-card-desc {
+    font-size: 13.5px;
+    color: var(--text-light);
+    line-height: 1.5;
+    flex: 1;
+}
+
+.idea-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.idea-start-badge {
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--green-light);
+    color: var(--green-dark);
+    padding: 3px 10px;
+    border-radius: 99px;
+}
+
+.idea-delete-btn {
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.idea-delete-btn:hover {
+    color: #C0505A;
+}
+
+/* ===== HABIT TRACKER — Flipped Grid ===== */
+/* Habit Grid — rows=dates, cols=habits */
+.habit-grid-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 540px;
+}
+
+.habit-flipped-grid {
+    display: grid;
+    gap: 4px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.hf-header-corner {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-light);
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 4px;
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 2;
+}
+
+.hf-habit-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+    padding: 4px 2px;
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 2;
+    max-width: 64px;
+    min-width: 48px;
+}
+
+.hf-header-emoji {
+    font-size: 18px;
+}
+
+.hf-header-name {
+    font-size: 10px;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.hf-date-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    height: 34px;
+    border-radius: 8px;
+}
+
+.hf-date-label.hf-today {
+    background: var(--pink);
+    color: var(--text-dark);
+    font-weight: 800;
+}
+
+.hf-cell {
+    height: 34px;
+    min-width: 48px;
+    border-radius: 8px;
+    background: var(--beige-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: background var(--transition), transform var(--transition);
+}
+
+.hf-cell:hover {
+    transform: scale(1.06);
+    border-color: var(--pink);
+}
+
+.hf-cell.hf-checked {
+    background: var(--pink);
+    box-shadow: 0 2px 6px var(--shadow-md);
+}
+
+.hf-cell.hf-checked::after {
+    content: '✓';
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--white);
+}
+
+.hf-cell.hf-checked:hover {
+    background: var(--pink-dark);
+}
+
+.hf-cell.hf-future {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Habit emoji picker */
+.habit-emoji-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+}
+
+.emoji-opt {
+    font-size: 22px;
+    text-align: center;
+    padding: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.emoji-opt:hover {
+    background: var(--pink-light);
+}
+
+.emoji-opt.selected {
+    border-color: var(--pink-dark);
+    background: var(--pink-light);
+}
+
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+/* ===== DAY PANEL ===== */
+.day-panel {
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+}

@@ -1,0 +1,192 @@
+/* calendar.js — Monthly Calendar + Daily To-Dos + Weekly Goal */
+
+let calYear, calMonth, selectedDate;
+
+function todayKey() {
+    const d = new Date();
+    return dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function dateKey(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function weekKey(date) {
+    // Monday-based week key
+    const d = new Date(date);
+    const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    d.setDate(d.getDate() - day);
+    return `wk-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function formatDayLabel(y, m, d) {
+    return new Date(y, m, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+function formatMonthYear(y, m) {
+    return new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function getTodos(key) { return Storage.get(`todos-${key}`, []); }
+function setTodos(key, todos) { Storage.set(`todos-${key}`, todos); }
+
+function initCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    selectedDate = todayKey();
+
+    document.getElementById('calPrev').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCal(); });
+    document.getElementById('calNext').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCal(); });
+
+    // Weekly goal
+    document.getElementById('editWeeklyGoalBtn').addEventListener('click', openWeeklyEdit);
+    document.getElementById('saveWeeklyGoalBtn').addEventListener('click', saveWeeklyGoal);
+    document.getElementById('cancelWeeklyGoalBtn').addEventListener('click', closeWeeklyEdit);
+
+    // Todo input
+    document.getElementById('addTodoBtn').addEventListener('click', addTodo);
+    document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+    renderCal();
+    renderWeeklyGoal();
+    renderDayPanel(selectedDate);
+}
+
+function renderCal() {
+    document.getElementById('calMonthYear').textContent = formatMonthYear(calYear, calMonth);
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const today = new Date();
+
+    // Blanks
+    for (let i = 0; i < firstDay; i++) { const d = document.createElement('div'); d.className = 'cal-day empty'; grid.appendChild(d); }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const key = dateKey(calYear, calMonth, day);
+        const el = document.createElement('div');
+        el.className = 'cal-day';
+        if (calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate()) el.classList.add('today');
+        if (key === selectedDate) el.classList.add('selected');
+
+        // Dot indicators
+        const todos = getTodos(key);
+        const dots = document.createElement('div');
+        dots.className = 'cal-day-dots';
+        const keyDate = new Date(calYear, calMonth, day);
+        const isPast = keyDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        todos.slice(0, 5).forEach(t => {
+            const dot = document.createElement('div');
+            dot.className = 'cal-dot';
+            if (t.done) dot.classList.add('done');
+            else if (isPast) dot.classList.add('missed');
+            dots.appendChild(dot);
+        });
+
+        el.innerHTML = `<span class="cal-day-num">${day}</span>`;
+        el.appendChild(dots);
+        el.addEventListener('click', () => selectDay(key));
+        grid.appendChild(el);
+    }
+}
+
+function selectDay(key) {
+    selectedDate = key;
+    renderCal();
+    renderDayPanel(key);
+    // Scroll to day panel
+    document.getElementById('dayPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderDayPanel(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    document.getElementById('dayPanelTitle').textContent = formatDayLabel(y, m - 1, d);
+    renderTodos(key);
+}
+
+function renderTodos(key) {
+    const list = document.getElementById('todoList');
+    const todos = getTodos(key);
+    list.innerHTML = '';
+    todos.forEach((todo, idx) => {
+        const li = document.createElement('li');
+        li.className = 'todo-item' + (todo.done ? ' done' : '');
+        li.innerHTML = `
+      <input type="checkbox" class="todo-check" ${todo.done ? 'checked' : ''} data-idx="${idx}" title="Mark done">
+      <span class="todo-text">${escapeHtml(todo.text)}</span>
+      <button class="todo-delete" data-idx="${idx}" title="Delete">✕</button>
+    `;
+        li.querySelector('.todo-check').addEventListener('change', e => toggleTodo(key, idx, e.target.checked));
+        li.querySelector('.todo-delete').addEventListener('click', () => deleteTodo(key, idx));
+        list.appendChild(li);
+    });
+}
+
+function addTodo() {
+    const input = document.getElementById('todoInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const todos = getTodos(selectedDate);
+    todos.push({ text, done: false, createdAt: Date.now() });
+    setTodos(selectedDate, todos);
+    input.value = '';
+    renderTodos(selectedDate);
+    renderCal();
+    refreshDashboard();
+}
+
+function toggleTodo(key, idx, done) {
+    const todos = getTodos(key);
+    todos[idx].done = done;
+    setTodos(key, todos);
+    renderTodos(key);
+    renderCal();
+    refreshDashboard();
+}
+
+function deleteTodo(key, idx) {
+    const todos = getTodos(key);
+    todos.splice(idx, 1);
+    setTodos(key, todos);
+    renderTodos(key);
+    renderCal();
+    refreshDashboard();
+}
+
+// Weekly Goal
+function getWeekKey() { return weekKey(new Date()); }
+function renderWeeklyGoal() {
+    const goal = Storage.get(getWeekKey(), '');
+    const display = document.getElementById('weeklyGoalDisplay');
+    display.textContent = goal || 'No weekly goal set yet. Click Edit! 🌟';
+    display.style.fontStyle = goal ? 'normal' : 'italic';
+    display.style.color = goal ? 'var(--text-dark)' : 'var(--text-light)';
+    document.getElementById('dashWeeklyGoal').textContent = goal || 'No weekly goal set yet.';
+}
+function openWeeklyEdit() {
+    document.getElementById('weeklyGoalInput').value = Storage.get(getWeekKey(), '');
+    document.getElementById('weeklyGoalInput').classList.remove('hidden');
+    document.getElementById('weeklyGoalActions').classList.remove('hidden');
+    document.getElementById('editWeeklyGoalBtn').classList.add('hidden');
+    document.getElementById('weeklyGoalDisplay').classList.add('hidden');
+}
+function saveWeeklyGoal() {
+    const val = document.getElementById('weeklyGoalInput').value.trim();
+    Storage.set(getWeekKey(), val);
+    renderWeeklyGoal();
+    closeWeeklyEdit();
+}
+function closeWeeklyEdit() {
+    document.getElementById('weeklyGoalInput').classList.add('hidden');
+    document.getElementById('weeklyGoalActions').classList.add('hidden');
+    document.getElementById('editWeeklyGoalBtn').classList.remove('hidden');
+    document.getElementById('weeklyGoalDisplay').classList.remove('hidden');
+}
+
+// Dashboard mini todos
+function renderDashTodos() {
+    const key = todayKey();
+    const todos = getTodos(key).slice(0, 5);
+    const container = document.getElementById('dashTodos');
+    if (!container) return;
+    container.innerHTML = todos.length
+        ? todos.map(t => `<div class="todo-mini-item${t.done ? ' done' : ''}"><span>${t.done ? '✅' : '⬜'}</span> ${escapeHtml(t.text)}</div>`).join('')
+        : '<p class="empty-state" style="font-size:13px">No tasks today! Add from Calendar 📅</p>';
+}

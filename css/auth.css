@@ -1,0 +1,241 @@
+/* ============================================================
+   auth.css — Login Page Styles
+   Shown to unauthenticated users; always uses the default
+   pastel blossom palette (theme class not applied yet at login)
+============================================================ */
+
+/* ── Full-screen overlay ──────────────────────────────────── */
+.login-overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #FFDDE8 0%, #D9EEE4 50%, #FDF0E0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.login-card {
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 48px 52px;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(180, 120, 150, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    text-align: center;
+    animation: loginFadeIn 0.4s ease;
+}
+
+@keyframes loginFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Brand ────────────────────────────────────────────────── */
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.login-flower {
+    font-size: 52px;
+    line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(255, 150, 180, 0.4));
+}
+
+.login-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px;
+    color: #3D2E35;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.login-tagline {
+    font-size: 14px;
+    color: #9B8A94;
+    margin: 0;
+}
+
+/* ── Feature pills ────────────────────────────────────────── */
+.login-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+
+.login-feature {
+    background: #FDF6EC;
+    border-radius: 12px;
+    padding: 11px 8px;
+    font-size: 13px;
+    color: #5A4A52;
+    font-weight: 600;
+    border: 1.5px solid #F0E4D0;
+}
+
+/* ── Google Sign-In button ───────────────────────────────── */
+.google-signin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: #ffffff;
+    border: 2px solid #E0CEBC;
+    border-radius: 99px;
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #3D2E35;
+    cursor: pointer;
+    width: 100%;
+    font-family: 'Nunito', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    box-shadow: 0 4px 16px rgba(180, 120, 150, 0.12);
+}
+
+.google-signin-btn:hover {
+    border-color: #FFB7C5;
+    box-shadow: 0 6px 24px rgba(180, 120, 150, 0.25);
+    transform: translateY(-2px);
+}
+
+.google-signin-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Status messages ──────────────────────────────────────── */
+.login-loading {
+    font-size: 14px;
+    color: #9B8A94;
+    font-style: italic;
+}
+
+.login-error {
+    font-size: 13px;
+    color: #C0505A;
+    background: #FFE4E4;
+    border-radius: 10px;
+    padding: 10px 16px;
+    width: 100%;
+}
+
+.login-privacy {
+    font-size: 12px;
+    color: #B0A0A8;
+}
+
+/* ── Divider (“or” separator) ────────────────────────────── */
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    color: #C8B8C0;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1.5px;
+    background: #EDE0E8;
+    border-radius: 99px;
+}
+
+/* ── Guest mode button ──────────────────────────────── */
+.guest-mode-btn {
+    background: none;
+    border: none;
+    color: #9B8A94;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s;
+    padding: 0;
+}
+
+.guest-mode-btn:hover {
+    color: #5A4A52;
+}
+
+.guest-note {
+    font-size: 12px;
+    color: #B8A8B0;
+    margin-top: -8px;
+}
+
+/* ── Sidebar user profile ─────────────────────────────────── */
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 12px;
+    border-bottom: 1.5px solid var(--beige-dark);
+    margin-bottom: 8px;
+}
+
+.sidebar-user-photo {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pink);
+    flex-shrink: 0;
+}
+
+.sidebar-user-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity var(--transition);
+}
+
+.sidebar.collapsed .sidebar-user-name {
+    opacity: 0;
+}
+
+.sidebar.collapsed .sidebar-user-photo {
+    display: none !important;
+}
+
+.sidebar-signout-btn {
+    font-size: 16px;
+    color: var(--text-light);
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.sidebar-signout-btn:hover {
+    color: #C0505A;
+    background: #FFE4E4;
+}
