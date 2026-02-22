@@ -12,11 +12,15 @@
       → Add your GitHub Pages domain, e.g. "your-username.github.io"
    ============================================================ */
 
-const FIREBASE_CONFIG = {
-    apiKey: "YOUR_API_KEY_HERE",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBbxYjdkm0AC4ZafzAofNOp44U3v8C98Mo",
+  authDomain: "personal-planner-8a1f8.firebaseapp.com",
+  projectId: "personal-planner-8a1f8",
+  storageBucket: "personal-planner-8a1f8.firebasestorage.app",
+  messagingSenderId: "804980360337",
+  appId: "1:804980360337:web:8ca89a51cfa13e6a12eb30",
+  measurementId: "G-XYWPH4CBY6"
 };
+
+
