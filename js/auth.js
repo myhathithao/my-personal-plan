@@ -23,7 +23,7 @@ function initFirebase() {
     }
 
     // Guard: check config is filled in
-    if (!FIREBASE_CONFIG || FIREBASE_CONFIG.apiKey === 'AIzaSyBbxYjdkm0AC4ZafzAofNOp44U3v8C98Mo') {
+    if (!FIREBASE_CONFIG || FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY_HERE') {
         console.warn('Firebase config not set. See js/firebase-config.js');
         showConfigWarning();
         showLoginScreen();
@@ -198,5 +198,3 @@ function getGoogleBtnHTML() {
     </svg>
     Sign in with Google`;
 }
-
-
