@@ -512,11 +512,13 @@
 
           <div class="card pomo-tasks-card">
             <div class="card-header">
-              <h2>🎯 Focus Task</h2>
+              <h2>🎯 Focus Tasks</h2>
             </div>
-            <input type="text" id="pomoTaskInput" class="text-input" placeholder="What are you working on? 🌸" />
-            <div class="pomo-focus-display" id="pomoFocusDisplay"></div>
-            <button class="btn-primary" id="setPomoTaskBtn">Set Task</button>
+            <div class="pomo-task-input-row">
+              <input type="text" id="pomoTaskInput" class="text-input" placeholder="Add a task... 🌸" />
+              <button class="btn-primary" id="setPomoTaskBtn">Add</button>
+            </div>
+            <ul class="pomo-task-list" id="pomoTaskList"></ul>
           </div>
         </div>
       </section>
