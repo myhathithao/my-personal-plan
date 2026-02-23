@@ -211,3 +211,110 @@
     border-radius: 20px;
     padding: 3px 10px;
 }
+
+/* ── Weekly Tasks Section ────────────────────────────────────────────── */
+.weekly-tasks-section {
+    margin-top: 18px;
+    border-top: 1.5px solid var(--beige-mid);
+    padding-top: 14px;
+}
+
+.weekly-tasks-header {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: var(--text-dark);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.weekly-task-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.weekly-task-input-row .text-input {
+    flex: 1;
+}
+
+.weekly-task-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.weekly-task-empty {
+    font-size: 13px;
+    color: var(--text-light);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.weekly-task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    background: var(--beige);
+    border-radius: 10px;
+    border: 1.5px solid transparent;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.weekly-task-item:hover {
+    background: var(--pink-light);
+    border-color: var(--pink);
+}
+
+.weekly-task-item.done {
+    background: var(--green-light);
+    border-color: var(--green-dark);
+    opacity: 0.75;
+}
+
+.weekly-task-check {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--green-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.weekly-task-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    transition: text-decoration 0.15s, color 0.15s;
+}
+
+.weekly-task-item.done .weekly-task-text {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+.weekly-task-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+
+.weekly-task-item:hover .weekly-task-delete {
+    opacity: 1;
+}
+
+.weekly-task-delete:hover {
+    color: #C0505A;
+    background: rgba(192, 80, 90, 0.1);
+}
