@@ -128,3 +128,86 @@
 .cal-dot.missed {
     background: #C0505A;
 }
+
+/* Deadline dot — distinct amber/orange color */
+.cal-dot.deadline {
+    background: #E8944A;
+}
+
+.cal-dot.deadline.done {
+    background: var(--green-dark);
+}
+
+/* ── Deadline Section in Day Panel ───────────────────────────────────────── */
+.deadline-section {
+    margin-bottom: 14px;
+    border-radius: 12px;
+    border: 1.5px solid #F0C48A;
+    background: linear-gradient(135deg, #FFF8EE 0%, #FFF3E0 100%);
+    overflow: hidden;
+}
+
+.deadline-section-header {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #B5621A;
+    text-transform: uppercase;
+    padding: 8px 14px 6px;
+    border-bottom: 1px solid #F0C48A;
+    background: rgba(240, 196, 138, 0.25);
+}
+
+.deadline-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(240, 196, 138, 0.4);
+    transition: background 0.15s;
+}
+
+.deadline-item:last-child {
+    border-bottom: none;
+}
+
+.deadline-item:hover {
+    background: rgba(240, 196, 138, 0.15);
+}
+
+.deadline-item-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+    flex: 1;
+}
+
+.deadline-item-source {
+    font-size: 11px;
+    color: #B5621A;
+    background: rgba(240, 196, 138, 0.4);
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.deadline-item-done .deadline-item-label {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+/* Idea deadline badge on idea cards */
+.idea-deadline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #FFF0E0;
+    color: #B5621A;
+    border: 1.5px solid #F0C48A;
+    border-radius: 20px;
+    padding: 3px 10px;
+}
