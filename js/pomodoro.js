@@ -12,7 +12,65 @@ let pomoRunning = false;
 let pomoTimeLeft = 0;
 let pomoTotalTime = 0;
 
-// Load or init custom durations
+/* ── Task List ────────────────────────────────────────────── */
+function getPomoTasks() {
+    return Storage.get('pomoTasks', []);
+}
+function savePomoTasks(tasks) {
+    Storage.set('pomoTasks', tasks);
+}
+
+function addPomoTask(text) {
+    const tasks = getPomoTasks();
+    tasks.push({ id: Date.now(), text, done: false });
+    savePomoTasks(tasks);
+    renderPomoTasks();
+}
+
+function togglePomoTask(id) {
+    const tasks = getPomoTasks();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    task.done = true;
+    savePomoTasks(tasks);
+
+    // Visually mark as done, then auto-remove after 1.2s
+    const li = document.querySelector(`.pomo-task-item[data-id="${id}"]`);
+    if (li) {
+        li.classList.add('pomo-task-done');
+        setTimeout(() => {
+            deletePomoTask(id);
+        }, 1200);
+    }
+}
+
+function deletePomoTask(id) {
+    const tasks = getPomoTasks().filter(t => t.id !== id);
+    savePomoTasks(tasks);
+    renderPomoTasks();
+}
+
+function renderPomoTasks() {
+    const list = document.getElementById('pomoTaskList');
+    if (!list) return;
+    const tasks = getPomoTasks();
+
+    if (!tasks.length) {
+        list.innerHTML = '<li class="pomo-task-empty">No tasks yet. Add one above! 🌸</li>';
+        return;
+    }
+
+    list.innerHTML = tasks.map(t => `
+      <li class="pomo-task-item${t.done ? ' pomo-task-done' : ''}" data-id="${t.id}">
+        <input type="checkbox" class="pomo-task-check" ${t.done ? 'checked' : ''}
+          onchange="togglePomoTask(${t.id})" />
+        <span class="pomo-task-text">${escapeHtml(t.text)}</span>
+        <button class="pomo-task-delete" onclick="deletePomoTask(${t.id})" title="Remove">×</button>
+      </li>
+    `).join('');
+}
+
+/* ── Duration helpers ─────────────────────────────────────── */
 function getPomoDurations() {
     return Storage.get('pomoDurations', {
         work: 25, short: 5, long: 15
@@ -24,6 +82,7 @@ function setPomoDuration(mode, mins) {
     Storage.set('pomoDurations', d);
 }
 
+/* ── Init ─────────────────────────────────────────────────── */
 function initPomodoro() {
     const durations = getPomoDurations();
     pomoTimeLeft = durations[pomoCurrentMode] * 60;
@@ -44,8 +103,7 @@ function initPomodoro() {
     document.getElementById('pomoDurMinus').addEventListener('click', () => {
         if (pomoRunning) return;
         const d = getPomoDurations();
-        const min = 1;
-        if (d[pomoCurrentMode] > min) {
+        if (d[pomoCurrentMode] > 1) {
             setPomoDuration(pomoCurrentMode, d[pomoCurrentMode] - 1);
             reloadDuration();
         }
@@ -53,28 +111,38 @@ function initPomodoro() {
     document.getElementById('pomoDurPlus').addEventListener('click', () => {
         if (pomoRunning) return;
         const d = getPomoDurations();
-        const max = 120;
-        if (d[pomoCurrentMode] < max) {
+        if (d[pomoCurrentMode] < 120) {
             setPomoDuration(pomoCurrentMode, d[pomoCurrentMode] + 1);
             reloadDuration();
         }
     });
 
-    document.getElementById('setPomoTaskBtn').addEventListener('click', () => {
-        const val = document.getElementById('pomoTaskInput').value.trim();
+    // Task input — Add on button click or Enter key
+    const taskInput = document.getElementById('pomoTaskInput');
+    const addBtn = document.getElementById('setPomoTaskBtn');
+
+    addBtn.addEventListener('click', () => {
+        const val = taskInput.value.trim();
         if (!val) return;
-        document.getElementById('pomoFocusDisplay').textContent = '🎯 ' + val;
-        document.getElementById('pomoTaskInput').value = '';
+        addPomoTask(val);
+        taskInput.value = '';
+        taskInput.focus();
+    });
+
+    taskInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') addBtn.click();
     });
 
     // Load session count
     const today = new Date().toLocaleDateString();
     document.getElementById('pomoCount').textContent = Storage.get('pomoSessions-' + today, 0);
 
+    renderPomoTasks();
     renderPomoTimer();
     renderDurVal();
 }
 
+/* ── Timer ────────────────────────────────────────────────── */
 function reloadDuration() {
     const d = getPomoDurations();
     pomoTimeLeft = d[pomoCurrentMode] * 60;
@@ -151,4 +219,9 @@ function renderPomoTimer() {
     const ring = document.getElementById('pomoRingProgress');
     ring.style.strokeDashoffset = offset;
     ring.style.stroke = POMO_DEFAULTS[pomoCurrentMode].color;
+}
+
+/* ── Utility ──────────────────────────────────────────────── */
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
