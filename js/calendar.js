@@ -24,6 +24,33 @@ function formatMonthYear(y, m) {
 function getTodos(key) { return Storage.get(`todos-${key}`, []); }
 function setTodos(key, todos) { Storage.set(`todos-${key}`, todos); }
 
+// ── Deadline helpers ──────────────────────────────────────────────────────────
+// Returns an array of { label, type } for a given YYYY-MM-DD key.
+// Sources: Ideas Board (idea.deadline) + Progress Tracker sub-tasks (task.deadline).
+function getDeadlineItems(key) {
+    const items = [];
+
+    // Ideas with a deadline on this day
+    const ideas = Storage.get('ideas', []);
+    ideas.forEach(idea => {
+        if (idea.deadline === key) {
+            items.push({ label: `💡 ${idea.title}`, type: 'idea' });
+        }
+    });
+
+    // Progress Tracker sub-tasks with a deadline on this day
+    const bigGoals = Storage.get('bigGoals', []);
+    bigGoals.forEach(goal => {
+        (goal.subTasks || []).forEach(task => {
+            if (task.deadline === key) {
+                items.push({ label: `🎯 ${task.name}`, sublabel: goal.title, type: 'goal', done: task.done });
+            }
+        });
+    });
+
+    return items;
+}
+
 function initCalendar() {
     const now = new Date();
     calYear = now.getFullYear();
@@ -67,16 +94,24 @@ function renderCal() {
 
         // Dot indicators
         const todos = getTodos(key);
+        const deadlines = getDeadlineItems(key);
         const dots = document.createElement('div');
         dots.className = 'cal-day-dots';
         const keyDate = new Date(calYear, calMonth, day);
         const isPast = keyDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        todos.slice(0, 5).forEach(t => {
+        todos.slice(0, 4).forEach(t => {
             const dot = document.createElement('div');
             dot.className = 'cal-dot';
             if (t.done) dot.classList.add('done');
             else if (isPast) dot.classList.add('missed');
+            dots.appendChild(dot);
+        });
+
+        // Deadline dots (distinct style)
+        deadlines.slice(0, 3).forEach(d => {
+            const dot = document.createElement('div');
+            dot.className = 'cal-dot deadline' + (d.done ? ' done' : '');
             dots.appendChild(dot);
         });
 
@@ -98,7 +133,36 @@ function selectDay(key) {
 function renderDayPanel(key) {
     const [y, m, d] = key.split('-').map(Number);
     document.getElementById('dayPanelTitle').textContent = formatDayLabel(y, m - 1, d);
+    renderDeadlineItems(key);
     renderTodos(key);
+}
+
+function renderDeadlineItems(key) {
+    // Remove existing deadline section if any
+    const existing = document.getElementById('deadlineSection');
+    if (existing) existing.remove();
+
+    const items = getDeadlineItems(key);
+    if (!items.length) return;
+
+    const section = document.createElement('div');
+    section.id = 'deadlineSection';
+    section.className = 'deadline-section';
+
+    section.innerHTML = `
+        <div class="deadline-section-header">📌 Deadlines</div>
+        ${items.map(item => `
+            <div class="deadline-item${item.done ? ' deadline-item-done' : ''}">
+                <span class="deadline-item-label">${escapeHtml(item.label)}</span>
+                ${item.sublabel ? `<span class="deadline-item-source">${escapeHtml(item.sublabel)}</span>` : ''}
+            </div>
+        `).join('')}
+    `;
+
+    // Insert before the todo input row
+    const todoInput = document.querySelector('.todo-input-row');
+    if (todoInput) todoInput.parentNode.insertBefore(section, todoInput);
+    else document.getElementById('dayPanel').appendChild(section);
 }
 
 function renderTodos(key) {
