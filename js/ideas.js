@@ -13,12 +13,14 @@ function addIdea() {
     if (!title) return;
     const desc = document.getElementById('ideaDesc').value.trim();
     const startDate = document.getElementById('ideaStartDate').value;
+    const deadline = document.getElementById('ideaDeadline') ? document.getElementById('ideaDeadline').value : '';
     const ideas = getIdeas();
-    ideas.unshift({ id: Date.now(), title, desc, startDate, createdAt: Date.now() });
+    ideas.unshift({ id: Date.now(), title, desc, startDate, deadline, createdAt: Date.now() });
     setIdeas(ideas);
     document.getElementById('ideaTitle').value = '';
     document.getElementById('ideaDesc').value = '';
     document.getElementById('ideaStartDate').value = '';
+    if (document.getElementById('ideaDeadline')) document.getElementById('ideaDeadline').value = '';
     renderIdeas();
 }
 
@@ -48,6 +50,9 @@ function renderIdeas() {
         ${idea.startDate
             ? `<span class="idea-start-badge">🗓 Start: ${formatDate(idea.startDate)}</span>`
             : `<span class="idea-start-badge" style="background:var(--beige-mid);color:var(--text-light)">No date set</span>`}
+        ${idea.deadline
+            ? `<span class="idea-deadline-badge">⏰ Due: ${formatDate(idea.deadline)}</span>`
+            : ''}
         <button class="idea-delete-btn" onclick="deleteIdea(${idea.id})">✕ Delete</button>
       </div>
     </div>
