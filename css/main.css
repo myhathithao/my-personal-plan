@@ -1333,3 +1333,84 @@ textarea {
   align-items: center;
   gap: 10px;
 }
+
+/* ===== POMODORO TASK LIST ===== */
+.pomo-task-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pomo-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pomo-task-empty {
+  font-size: 13.5px;
+  color: var(--text-light);
+  font-style: italic;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.pomo-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--beige);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  border: 1.5px solid var(--beige-dark);
+  transition: background var(--transition), opacity 0.4s ease, transform 0.4s ease;
+  animation: slideIn 0.2s ease;
+}
+
+.pomo-task-item:hover {
+  background: var(--pink-light);
+}
+
+.pomo-task-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--pink-dark);
+  cursor: pointer;
+}
+
+.pomo-task-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-dark);
+  transition: color var(--transition);
+}
+
+.pomo-task-delete {
+  font-size: 18px;
+  color: var(--text-light);
+  background: none;
+  padding: 0 4px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+}
+
+.pomo-task-delete:hover {
+  color: #C0505A;
+  background: #FFE4E4;
+}
+
+.pomo-task-done .pomo-task-text {
+  text-decoration: line-through;
+  color: var(--text-light);
+}
+
+.pomo-task-done {
+  opacity: 0.5;
+  transform: scale(0.97);
+}
