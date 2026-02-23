@@ -69,6 +69,10 @@ function initCalendar() {
     document.getElementById('addTodoBtn').addEventListener('click', addTodo);
     document.getElementById('todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
 
+    // Weekly tasks
+    document.getElementById('addWeeklyTaskBtn').addEventListener('click', addWeeklyTask);
+    document.getElementById('weeklyTaskInput').addEventListener('keydown', e => { if (e.key === 'Enter') addWeeklyTask(); });
+
     renderCal();
     renderWeeklyGoal();
     renderDayPanel(selectedDate);
@@ -223,6 +227,7 @@ function renderWeeklyGoal() {
     display.style.fontStyle = goal ? 'normal' : 'italic';
     display.style.color = goal ? 'var(--text-dark)' : 'var(--text-light)';
     document.getElementById('dashWeeklyGoal').textContent = goal || 'No weekly goal set yet.';
+    renderWeeklyTasks();
 }
 function openWeeklyEdit() {
     document.getElementById('weeklyGoalInput').value = Storage.get(getWeekKey(), '');
@@ -242,6 +247,57 @@ function closeWeeklyEdit() {
     document.getElementById('weeklyGoalActions').classList.add('hidden');
     document.getElementById('editWeeklyGoalBtn').classList.remove('hidden');
     document.getElementById('weeklyGoalDisplay').classList.remove('hidden');
+}
+
+// ── Weekly Tasks ───────────────────────────────────────────────────────
+function getWeeklyTasks() { return Storage.get(`wtasks-${getWeekKey()}`, []); }
+function setWeeklyTasks(tasks) { Storage.set(`wtasks-${getWeekKey()}`, tasks); }
+
+function addWeeklyTask() {
+    const input = document.getElementById('weeklyTaskInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const tasks = getWeeklyTasks();
+    tasks.push({ id: Date.now(), text, done: false });
+    setWeeklyTasks(tasks);
+    input.value = '';
+    renderWeeklyTasks();
+}
+
+function toggleWeeklyTask(id, done) {
+    const tasks = getWeeklyTasks();
+    const t = tasks.find(t => t.id === id);
+    if (t) t.done = done;
+    setWeeklyTasks(tasks);
+    renderWeeklyTasks();
+}
+
+function deleteWeeklyTask(id) {
+    setWeeklyTasks(getWeeklyTasks().filter(t => t.id !== id));
+    renderWeeklyTasks();
+}
+
+function renderWeeklyTasks() {
+    const list = document.getElementById('weeklyTaskList');
+    if (!list) return;
+    const tasks = getWeeklyTasks();
+    list.innerHTML = '';
+    if (!tasks.length) {
+        list.innerHTML = '<li class="weekly-task-empty">No tasks yet — add your first one above! 🌱</li>';
+        return;
+    }
+    tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'weekly-task-item' + (task.done ? ' done' : '');
+        li.innerHTML = `
+            <input type="checkbox" class="weekly-task-check" ${task.done ? 'checked' : ''} title="Mark done">
+            <span class="weekly-task-text">${escapeHtml(task.text)}</span>
+            <button class="weekly-task-delete" title="Remove">✕</button>
+        `;
+        li.querySelector('.weekly-task-check').addEventListener('change', e => toggleWeeklyTask(task.id, e.target.checked));
+        li.querySelector('.weekly-task-delete').addEventListener('click', () => deleteWeeklyTask(task.id));
+        list.appendChild(li);
+    });
 }
 
 // Dashboard mini todos
