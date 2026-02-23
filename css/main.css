@@ -151,6 +151,7 @@ textarea {
   z-index: 100;
   transition: width var(--transition);
   overflow: hidden;
+  overflow-y: auto;
 }
 
 .sidebar.collapsed {
@@ -188,19 +189,22 @@ textarea {
 .nav-list {
   flex: 1;
   padding: 0 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   transition: background var(--transition), color var(--transition);
   font-weight: 600;
   font-size: 14.5px;
   color: var(--text);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   white-space: nowrap;
 }
 
