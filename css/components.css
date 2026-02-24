@@ -327,3 +327,368 @@
     display: flex;
     flex-direction: column;
 }
+
+/* ===================================================
+   PLAN BOARD (Goals Page)
+=================================================== */
+
+/* ── Year Goal ── */
+.goal-year-card {
+    margin-bottom: 20px;
+}
+
+.year-goal-display {
+    min-height: 36px;
+}
+
+.goal-input {
+    width: 100%;
+    border: 1.5px solid var(--pink-light);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text-dark);
+    background: var(--beige);
+    resize: vertical;
+    margin-top: 12px;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.goal-input:focus {
+    border-color: var(--pink-dark);
+}
+
+.goal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+/* ── Board Toolbar ── */
+.board-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 22px;
+    padding: 16px 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1.5px solid var(--pink-light);
+    box-shadow: 0 2px 10px var(--shadow);
+}
+
+.template-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex: 1;
+}
+
+.template-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.template-group-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+.template-chip {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 99px;
+    border: 1.5px solid var(--pink-light);
+    background: var(--beige);
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition), border-color var(--transition);
+    white-space: nowrap;
+}
+
+.template-chip:hover {
+    background: var(--pink-light);
+    border-color: var(--pink);
+    transform: translateY(-1px);
+}
+
+.template-chip.chip-exists {
+    background: var(--green-light);
+    border-color: var(--green-dark);
+    color: var(--green-dark);
+}
+
+/* ── Plan Board Grid ── */
+.plan-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.plan-board-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-light);
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+/* ── Plan Card ── */
+.plan-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1.5px solid var(--pink-light);
+    border-left: 4px solid var(--card-accent, var(--pink));
+    box-shadow: 0 3px 14px var(--shadow);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform var(--transition), box-shadow var(--transition);
+    animation: slideIn 0.22s ease;
+    position: relative;
+}
+
+.plan-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 26px var(--shadow-md);
+}
+
+/* ── Card Header ── */
+.plan-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.plan-card-emoji {
+    font-size: 22px;
+    cursor: pointer;
+    transition: transform var(--transition);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.plan-card-emoji:hover {
+    transform: scale(1.2);
+}
+
+.plan-card-title-input {
+    flex: 1;
+    border: none;
+    border-bottom: 1.5px solid transparent;
+    background: transparent;
+    font-family: inherit;
+    font-size: 15.5px;
+    font-weight: 800;
+    color: var(--text-dark);
+    padding: 2px 4px;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.plan-card-title-input:focus {
+    border-bottom-color: var(--pink);
+}
+
+.plan-card-delete {
+    opacity: 0;
+    transition: opacity var(--transition), color var(--transition);
+    font-size: 16px;
+    color: var(--text-light);
+    padding: 0 4px;
+}
+
+.plan-card:hover .plan-card-delete {
+    opacity: 1;
+}
+
+.plan-card-delete:hover {
+    color: #C0505A;
+}
+
+/* ── Progress Bar ── */
+.plan-card-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.plan-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--beige-dark);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.plan-progress-fill {
+    height: 100%;
+    background: var(--card-accent, var(--pink));
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.plan-progress-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+
+/* ── Item List ── */
+.plan-item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.plan-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--beige);
+    border: 1.5px solid var(--beige-dark);
+    transition: background var(--transition);
+    animation: slideIn 0.18s ease;
+}
+
+.plan-item:hover {
+    background: var(--green-light);
+}
+
+.plan-item-check {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--pink-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.plan-item-text {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-dark);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.plan-item.done .plan-item-text {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+.plan-item-delete {
+    opacity: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-light);
+    padding: 0 4px;
+    transition: opacity var(--transition), color var(--transition);
+    flex-shrink: 0;
+}
+
+.plan-item:hover .plan-item-delete {
+    opacity: 1;
+}
+
+.plan-item-delete:hover {
+    color: #C0505A;
+}
+
+/* ── Add Item Row ── */
+.plan-add-item-row {
+    display: flex;
+    gap: 8px;
+}
+
+.plan-add-item-row .text-input {
+    flex: 1;
+    font-size: 13.5px;
+    padding: 7px 12px;
+}
+
+.plan-add-item-row .btn-primary {
+    padding: 7px 14px;
+    font-size: 13px;
+}
+
+/* ── Emoji Popover (inline picker on card) ── */
+.emoji-popover {
+    position: absolute;
+    z-index: 200;
+    background: var(--white);
+    border: 1.5px solid var(--pink-light);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px var(--shadow-md);
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    top: 48px;
+    left: 16px;
+    animation: slideIn 0.15s ease;
+}
+
+.emoji-popover-btn {
+    font-size: 20px;
+    text-align: center;
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: background var(--transition);
+}
+
+.emoji-popover-btn:hover {
+    background: var(--pink-light);
+    border-color: var(--pink);
+}
+
+/* ── New-Card Modal emoji grid ── */
+.new-card-emoji-row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    margin-bottom: 12px;
+    max-height: 130px;
+    overflow-y: auto;
+}
+
+.modal-emoji-btn {
+    font-size: 20px;
+    text-align: center;
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: transparent;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.modal-emoji-btn:hover {
+    background: var(--pink-light);
+}
+
+.modal-emoji-btn.selected {
+    border-color: var(--pink-dark);
+    background: var(--pink-light);
+}
