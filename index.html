@@ -172,10 +172,10 @@
       <section class="page" id="page-goals">
         <div class="page-header">
           <h1 class="page-title">🎯 My Goals</h1>
-          <p class="page-subtitle">Dream big, then break it down. 🌱</p>
+          <p class="page-subtitle">Plan your year, your way. 🌱</p>
         </div>
 
-        <!-- Year Goal -->
+        <!-- Year Big Goal -->
         <div class="card goal-year-card">
           <div class="card-header">
             <h2>✨ Year Goal — 2026</h2>
@@ -192,47 +192,50 @@
           </div>
         </div>
 
-        <!-- Season Goals -->
-        <div class="season-grid">
-          <div class="card season-card" data-season="0">
-            <div class="season-emoji">🌸</div>
-            <h3>Spring</h3>
-            <p class="season-range">Mar – May</p>
-            <div class="season-goal-display" data-season="0"></div>
-            <button class="btn-soft season-edit-btn">Edit Goal</button>
-          </div>
-          <div class="card season-card" data-season="1">
-            <div class="season-emoji">☀️</div>
-            <h3>Summer</h3>
-            <p class="season-range">Jun – Aug</p>
-            <div class="season-goal-display" data-season="1"></div>
-            <button class="btn-soft season-edit-btn">Edit Goal</button>
-          </div>
-          <div class="card season-card" data-season="2">
-            <div class="season-emoji">🍂</div>
-            <h3>Autumn</h3>
-            <p class="season-range">Sep – Nov</p>
-            <div class="season-goal-display" data-season="2"></div>
-            <button class="btn-soft season-edit-btn">Edit Goal</button>
-          </div>
-          <div class="card season-card" data-season="3">
-            <div class="season-emoji">❄️</div>
-            <h3>Winter</h3>
-            <p class="season-range">Dec – Feb</p>
-            <div class="season-goal-display" data-season="3"></div>
-            <button class="btn-soft season-edit-btn">Edit Goal</button>
+        <!-- Board Toolbar -->
+        <div class="board-toolbar">
+          <button class="btn-primary" id="addPlanCardBtn">+ Add Card</button>
+          <div class="template-groups">
+            <div class="template-group">
+              <span class="template-group-label">By Season</span>
+              <button class="template-chip" data-emoji="🌸" data-title="Spring">🌸 Spring</button>
+              <button class="template-chip" data-emoji="☀️" data-title="Summer">☀️ Summer</button>
+              <button class="template-chip" data-emoji="🍂" data-title="Autumn">🍂 Autumn</button>
+              <button class="template-chip" data-emoji="❄️" data-title="Winter">❄️ Winter</button>
+            </div>
+            <div class="template-group">
+              <span class="template-group-label">Life Areas</span>
+              <button class="template-chip" data-emoji="💪" data-title="Health">💪 Health</button>
+              <button class="template-chip" data-emoji="💼" data-title="Career">💼 Career</button>
+              <button class="template-chip" data-emoji="💰" data-title="Finance">💰 Finance</button>
+              <button class="template-chip" data-emoji="❤️" data-title="Relationships">❤️ Relationships</button>
+              <button class="template-chip" data-emoji="📚" data-title="Study">📚 Study</button>
+              <button class="template-chip" data-emoji="🌱" data-title="Growth">🌱 Growth</button>
+            </div>
+            <div class="template-group">
+              <span class="template-group-label">PERMA</span>
+              <button class="template-chip" data-emoji="😊" data-title="Positive Emotions">😊 Positivity</button>
+              <button class="template-chip" data-emoji="🎮" data-title="Engagement">🎮 Engagement</button>
+              <button class="template-chip" data-emoji="💬" data-title="Relationships">💬 Connections</button>
+              <button class="template-chip" data-emoji="🎯" data-title="Meaning">🎯 Meaning</button>
+              <button class="template-chip" data-emoji="🏆" data-title="Achievement">🏆 Achievement</button>
+            </div>
           </div>
         </div>
 
-        <!-- Season Goal Modal -->
-        <div class="modal-overlay hidden" id="seasonModal">
+        <!-- Plan Board (dynamically rendered) -->
+        <div class="plan-board" id="planBoard"></div>
+
+        <!-- New Card Modal -->
+        <div class="modal-overlay hidden" id="newCardModal">
           <div class="modal">
-            <h3 id="seasonModalTitle">Edit Season Goal</h3>
-            <textarea id="seasonGoalInput" class="goal-input" rows="4"
-              placeholder="What do you want to achieve this season? 🌿"></textarea>
+            <h3>New Plan Card ✨</h3>
+            <div class="new-card-emoji-row" id="newCardEmojiRow"></div>
+            <input type="text" id="newCardTitle" class="text-input"
+              placeholder="Card title (e.g. Health, Spring, Q1…)" />
             <div class="modal-actions">
-              <button class="btn-primary" id="saveSeasonGoalBtn">Save 💾</button>
-              <button class="btn-soft" id="cancelSeasonGoalBtn">Cancel</button>
+              <button class="btn-primary" id="saveNewCardBtn">Create 🎉</button>
+              <button class="btn-soft" id="cancelNewCardBtn">Cancel</button>
             </div>
           </div>
         </div>
