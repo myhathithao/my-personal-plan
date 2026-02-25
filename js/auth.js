@@ -6,8 +6,17 @@
    - onAuthStateChanged → shows app or login screen
    - syncFromFirestore(uid) → pulls all user data into localStorage on login
    - pushToFirestore(key, jsonStr) → called by storage.js on every write
-   - signOutUser() → clears localStorage, signs out
+   - signOutUser() → flushes data to cloud then signs out
    ============================================================ */
+
+/* All localStorage keys the app uses — used for pre-sign-out flush */
+const APP_STORAGE_KEYS = [
+    'diaries', 'habits', 'habitLog', 'todos',
+    'weeklyGoal', 'weeklyTasks', 'yearGoal',
+    'goals', 'planCards', 'ideas', 'bigGoals',
+    'pomoCount', 'pomoTasks', 'reminders',
+    'colorTheme', 'sidebarCollapsed'
+];
 
 let db = null;
 let currentUser = null;
@@ -31,7 +40,10 @@ function initFirebase() {
     }
 
     try {
-        firebase.initializeApp(FIREBASE_CONFIG);
+        // Guard against duplicate initialization (sign-out → sign-in without page reload)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+        }
         db = firebase.firestore();
         firestoreReady = true;
 
@@ -63,7 +75,7 @@ function initFirebase() {
 /* ── Guest Mode ───────────────────────────────────────────── */
 function continueAsGuest() {
     sessionStorage.setItem('guestMode', 'true');
-    showApp(null); // null = no Google user
+    showApp(null);
     if (typeof initApp === 'function') initApp();
 }
 
@@ -96,11 +108,19 @@ async function signInWithGoogle() {
 
 /* ── Sign Out ─────────────────────────────────────────────── */
 async function signOutUser() {
-    // Clear guest mode session flag
     sessionStorage.removeItem('guestMode');
+
+    // Flush all local data to Firestore BEFORE signing out,
+    // so it's safely backed up in the cloud for next login.
+    if (firestoreReady && db && currentUser) {
+        try {
+            await flushAllToFirestore(currentUser.uid);
+        } catch (e) {
+            console.warn('Pre-signout flush failed:', e);
+        }
+    }
+
     try {
-        // Clear all app localStorage data for privacy
-        localStorage.clear();
         if (firestoreReady && currentUser) {
             await firebase.auth().signOut();
             // onAuthStateChanged will call showLoginScreen()
@@ -116,30 +136,63 @@ async function signOutUser() {
 
 /* ── Firestore Sync ────────────────────────────────────────── */
 
-// Pull all of the user's Firestore docs into localStorage
+/**
+ * Push ALL known localStorage keys to Firestore in parallel.
+ * Called before sign-out to guarantee the cloud copy is up to date.
+ */
+async function flushAllToFirestore(uid) {
+    if (!db || !uid) return;
+    const writes = APP_STORAGE_KEYS
+        .filter(key => localStorage.getItem(key) !== null)
+        .map(key => {
+            const raw = localStorage.getItem(key);
+            const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
+            return db.collection('users').doc(uid)
+                .collection('data').doc(docId)
+                .set({ k: key, v: raw, t: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+    await Promise.all(writes);
+    console.log('✅ Data flushed to Firestore before sign-out.');
+}
+
+/**
+ * Pull all of the user's Firestore docs into localStorage.
+ * Called on every login — Firestore is authoritative for signed-in users.
+ */
 async function syncFromFirestore(uid) {
     if (!db) return;
     const snapshot = await db
         .collection('users').doc(uid)
         .collection('data').get();
 
+    if (snapshot.empty) {
+        // No cloud data yet — push whatever is currently in localStorage
+        // so this device's data becomes the first cloud copy.
+        console.log('No Firestore data found — uploading local data as initial sync.');
+        await flushAllToFirestore(uid);
+        return;
+    }
+
     snapshot.forEach(doc => {
         const { k, v } = doc.data();
         if (k && v !== undefined) {
-            localStorage.setItem(k, v); // v is already JSON-stringified
+            localStorage.setItem(k, v);
         }
     });
+    console.log(`✅ Synced ${snapshot.size} keys from Firestore.`);
 }
 
-// Write one key→value to Firestore (called from Storage.set)
-// Non-blocking — errors are silently swallowed so UI is never blocked
+/**
+ * Write one key→value to Firestore (called from Storage.set).
+ * Non-blocking — runs in the background on every save.
+ */
 function pushToFirestore(key, jsonStr) {
     if (!firestoreReady || !db || !currentUser) return;
-    const docId = key.replace(/\//g, '|').replace(/\\/g, '|'); // Firestore doc IDs can't have /
+    const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
     db.collection('users').doc(currentUser.uid)
         .collection('data').doc(docId)
         .set({ k: key, v: jsonStr, t: firebase.firestore.FieldValue.serverTimestamp() })
-        .catch(e => console.warn('Firestore write failed for key', key, e));
+        .catch(e => console.warn('⚠️ Firestore write failed for key:', key, '—', e.message));
 }
 
 /* ── UI Helpers ────────────────────────────────────────────── */
@@ -150,7 +203,6 @@ function showApp(user) {
     if (overlay) overlay.classList.add('hidden');
     if (app) app.classList.remove('hidden');
 
-    // Update sidebar user profile
     const userEl = document.getElementById('sidebarUser');
     const nameEl = document.getElementById('sidebarUserName');
     const photoEl = document.getElementById('sidebarUserPhoto');
@@ -158,11 +210,17 @@ function showApp(user) {
     if (userEl) userEl.style.display = 'flex';
 
     if (user) {
-        // Google account user
         if (nameEl) nameEl.textContent = (user.displayName || user.email || 'You').split(' ')[0];
-        if (photoEl && user.photoURL) { photoEl.src = user.photoURL; photoEl.style.display = 'block'; }
+        if (photoEl && user.photoURL) {
+            // Request a small 60px raster avatar from Google
+            // (avoids the large coloured-letter SVG tile)
+            photoEl.src = user.photoURL.replace(/=s\d+-c/, '=s60-c');
+            photoEl.style.display = 'block';
+            photoEl.onerror = () => { photoEl.style.display = 'none'; };
+        } else if (photoEl) {
+            photoEl.style.display = 'none';
+        }
     } else {
-        // Guest / browser-only mode
         if (nameEl) nameEl.textContent = 'Browser only';
         if (photoEl) photoEl.style.display = 'none';
     }
