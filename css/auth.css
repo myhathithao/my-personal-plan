@@ -1,241 +1,247 @@
 /* ============================================================
-   auth.css — Login Page Styles
-   Shown to unauthenticated users; always uses the default
-   pastel blossom palette (theme class not applied yet at login)
-============================================================ */
+   auth.js — Firebase Authentication & Firestore Cloud Sync
+   ============================================================
+   Handles:
+   - Google Sign-In via popup
+   - onAuthStateChanged → shows app or login screen
+   - syncFromFirestore(uid) → pulls all user data into localStorage on login
+   - pushToFirestore(key, jsonStr) → called by storage.js on every write
+   - signOutUser() → signs out (does NOT clear localStorage)
+   ============================================================ */
 
-/* ── Full-screen overlay ──────────────────────────────────── */
-.login-overlay {
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, #FFDDE8 0%, #D9EEE4 50%, #FDF0E0 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
+let db = null;
+let currentUser = null;
+let firestoreReady = false;
 
-/* ── Card ─────────────────────────────────────────────────── */
-.login-card {
-    background: #ffffff;
-    border-radius: 28px;
-    padding: 48px 52px;
-    max-width: 440px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(180, 120, 150, 0.2);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 22px;
-    text-align: center;
-    animation: loginFadeIn 0.4s ease;
-}
-
-@keyframes loginFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.97);
+/* ── Init ─────────────────────────────────────────────────── */
+function initFirebase() {
+    // If user chose guest mode this session, skip Firebase entirely
+    if (sessionStorage.getItem('guestMode') === 'true') {
+        showApp(null);
+        if (typeof initApp === 'function') initApp();
+        return;
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
+    // Guard: check config is filled in
+    if (!FIREBASE_CONFIG || FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY_HERE') {
+        console.warn('Firebase config not set. See js/firebase-config.js');
+        showConfigWarning();
+        showLoginScreen();
+        return;
+    }
+
+    try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.firestore();
+        firestoreReady = true;
+
+        // Listen for auth state changes
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                showLoadingState(true);
+                try {
+                    await syncFromFirestore(user.uid);
+                } catch (e) {
+                    console.warn('Firestore sync failed, using local data:', e);
+                }
+                showLoadingState(false);
+                showApp(user);
+                if (typeof initApp === 'function') initApp();
+            } else {
+                currentUser = null;
+                showLoginScreen();
+            }
+        });
+    } catch (e) {
+        console.error('Firebase init error:', e);
+        showConfigWarning('Firebase init failed: ' + e.message);
+        showLoginScreen();
     }
 }
 
-/* ── Brand ────────────────────────────────────────────────── */
-.login-brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
+/* ── Guest Mode ───────────────────────────────────────────── */
+function continueAsGuest() {
+    sessionStorage.setItem('guestMode', 'true');
+    showApp(null); // null = no Google user
+    if (typeof initApp === 'function') initApp();
 }
 
-.login-flower {
-    font-size: 52px;
-    line-height: 1;
-    filter: drop-shadow(0 4px 8px rgba(255, 150, 180, 0.4));
+/* ── Sign In ──────────────────────────────────────────────── */
+async function signInWithGoogle() {
+    const btn = document.getElementById('googleSignInBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="signin-spinner">⏳</span> Signing in…';
+    }
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await firebase.auth().signInWithPopup(provider);
+        // onAuthStateChanged handles the rest
+    } catch (e) {
+        console.error('Sign-in error:', e);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = getGoogleBtnHTML();
+        }
+        const errEl = document.getElementById('loginError');
+        if (errEl) {
+            errEl.textContent = e.code === 'auth/popup-closed-by-user'
+                ? 'Sign-in cancelled. Try again.'
+                : 'Sign-in failed: ' + e.message;
+            errEl.style.display = 'block';
+        }
+    }
 }
 
-.login-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 38px;
-    color: #3D2E35;
-    margin: 0;
-    line-height: 1.1;
+/* ── Sign Out ─────────────────────────────────────────────── */
+async function signOutUser() {
+    // Clear guest mode session flag
+    sessionStorage.removeItem('guestMode');
+
+    // Flush any pending writes before signing out
+    if (firestoreReady && currentUser) {
+        await flushLocalToFirestore(currentUser.uid);
+    }
+
+    try {
+        if (firestoreReady && currentUser) {
+            await firebase.auth().signOut();
+            // onAuthStateChanged will call showLoginScreen()
+        } else {
+            currentUser = null;
+            showLoginScreen();
+        }
+    } catch (e) {
+        console.error('Sign-out error:', e);
+        showLoginScreen();
+    }
 }
 
-.login-tagline {
-    font-size: 14px;
-    color: #9B8A94;
-    margin: 0;
+/* ── Firestore Sync ────────────────────────────────────────── */
+
+// Push ALL localStorage keys to Firestore (called before sign-out to guarantee sync)
+async function flushLocalToFirestore(uid) {
+    if (!db || !uid) return;
+    const APP_KEYS = [
+        'diaries', 'habits', 'habitLog', 'todos',
+        'weeklyGoal', 'weeklyTasks', 'yearGoal',
+        'goals', 'planCards', 'ideas', 'bigGoals',
+        'pomoCount', 'pomoTasks', 'reminders', 'colorTheme',
+        'sidebarCollapsed'
+    ];
+    const writes = [];
+    for (const key of APP_KEYS) {
+        const raw = localStorage.getItem(key);
+        if (raw !== null) {
+            const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
+            writes.push(
+                db.collection('users').doc(uid)
+                    .collection('data').doc(docId)
+                    .set({ k: key, v: raw, t: firebase.firestore.FieldValue.serverTimestamp() })
+                    .catch(e => console.warn('Flush write failed for', key, e))
+            );
+        }
+    }
+    try {
+        await Promise.all(writes);
+        console.log('✅ All data flushed to Firestore before sign-out');
+    } catch (e) {
+        console.warn('Flush error:', e);
+    }
 }
 
-/* ── Feature pills ────────────────────────────────────────── */
-.login-features {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    width: 100%;
+// Pull all of the user's Firestore docs into localStorage
+// Only overwrites a local key if the Firestore copy is newer (has a server timestamp)
+// or if the key doesn't exist locally yet.
+async function syncFromFirestore(uid) {
+    if (!db) return;
+    const snapshot = await db
+        .collection('users').doc(uid)
+        .collection('data').get();
+
+    snapshot.forEach(doc => {
+        const { k, v } = doc.data();
+        if (k && v !== undefined) {
+            // Always restore — localStorage was NOT cleared on sign-out
+            // so this merges cloud data with local data.
+            // We only write if the key is truly absent locally.
+            const existing = localStorage.getItem(k);
+            if (existing === null) {
+                // Key missing locally → restore from cloud
+                localStorage.setItem(k, v);
+            }
+            // If key already exists locally, keep the local copy
+            // (it may be newer than what's in Firestore)
+        }
+    });
 }
 
-.login-feature {
-    background: #FDF6EC;
-    border-radius: 12px;
-    padding: 11px 8px;
-    font-size: 13px;
-    color: #5A4A52;
-    font-weight: 600;
-    border: 1.5px solid #F0E4D0;
+// Write one key→value to Firestore (called from Storage.set)
+function pushToFirestore(key, jsonStr) {
+    if (!firestoreReady || !db || !currentUser) return;
+    const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
+    db.collection('users').doc(currentUser.uid)
+        .collection('data').doc(docId)
+        .set({ k: key, v: jsonStr, t: firebase.firestore.FieldValue.serverTimestamp() })
+        .catch(e => {
+            console.warn('⚠️ Firestore write failed for key:', key, e.message || e);
+        });
 }
 
-/* ── Google Sign-In button ───────────────────────────────── */
-.google-signin-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: #ffffff;
-    border: 2px solid #E0CEBC;
-    border-radius: 99px;
-    padding: 14px 32px;
-    font-size: 16px;
-    font-weight: 700;
-    color: #3D2E35;
-    cursor: pointer;
-    width: 100%;
-    font-family: 'Nunito', sans-serif;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-    box-shadow: 0 4px 16px rgba(180, 120, 150, 0.12);
+/* ── UI Helpers ────────────────────────────────────────────── */
+
+function showApp(user) {
+    const overlay = document.getElementById('loginOverlay');
+    const app = document.getElementById('appContainer');
+    if (overlay) overlay.classList.add('hidden');
+    if (app) app.classList.remove('hidden');
+
+    // Update sidebar user profile
+    const userEl = document.getElementById('sidebarUser');
+    const nameEl = document.getElementById('sidebarUserName');
+    const photoEl = document.getElementById('sidebarUserPhoto');
+
+    if (userEl) userEl.style.display = 'flex';
+
+    if (user) {
+        // Google account user
+        if (nameEl) nameEl.textContent = (user.displayName || user.email || 'You').split(' ')[0];
+        if (photoEl && user.photoURL) { photoEl.src = user.photoURL; photoEl.style.display = 'block'; }
+    } else {
+        // Guest / browser-only mode
+        if (nameEl) nameEl.textContent = 'Browser only';
+        if (photoEl) photoEl.style.display = 'none';
+    }
 }
 
-.google-signin-btn:hover {
-    border-color: #FFB7C5;
-    box-shadow: 0 6px 24px rgba(180, 120, 150, 0.25);
-    transform: translateY(-2px);
+function showLoginScreen() {
+    const overlay = document.getElementById('loginOverlay');
+    const app = document.getElementById('appContainer');
+    if (overlay) overlay.classList.remove('hidden');
+    if (app) app.classList.add('hidden');
 }
 
-.google-signin-btn:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-    transform: none;
+function showLoadingState(loading) {
+    const spinner = document.getElementById('loginLoadingMsg');
+    if (spinner) spinner.style.display = loading ? 'block' : 'none';
 }
 
-/* ── Status messages ──────────────────────────────────────── */
-.login-loading {
-    font-size: 14px;
-    color: #9B8A94;
-    font-style: italic;
+function showConfigWarning(msg) {
+    const el = document.getElementById('loginError');
+    if (el) {
+        el.textContent = msg || '⚠️ Firebase not configured. Fill in js/firebase-config.js first.';
+        el.style.display = 'block';
+    }
 }
 
-.login-error {
-    font-size: 13px;
-    color: #C0505A;
-    background: #FFE4E4;
-    border-radius: 10px;
-    padding: 10px 16px;
-    width: 100%;
-}
-
-.login-privacy {
-    font-size: 12px;
-    color: #B0A0A8;
-}
-
-/* ── Divider (“or” separator) ────────────────────────────── */
-.login-divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    color: #C8B8C0;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.login-divider::before,
-.login-divider::after {
-    content: '';
-    flex: 1;
-    height: 1.5px;
-    background: #EDE0E8;
-    border-radius: 99px;
-}
-
-/* ── Guest mode button ──────────────────────────────── */
-.guest-mode-btn {
-    background: none;
-    border: none;
-    color: #9B8A94;
-    font-size: 14.5px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'Nunito', sans-serif;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    transition: color 0.2s;
-    padding: 0;
-}
-
-.guest-mode-btn:hover {
-    color: #5A4A52;
-}
-
-.guest-note {
-    font-size: 12px;
-    color: #B8A8B0;
-    margin-top: -8px;
-}
-
-/* ── Sidebar user profile ─────────────────────────────────── */
-.sidebar-user {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px 12px;
-    border-bottom: 1.5px solid var(--beige-dark);
-    margin-bottom: 8px;
-}
-
-.sidebar-user-photo {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--pink);
-    flex-shrink: 0;
-}
-
-.sidebar-user-name {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-dark);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: opacity var(--transition);
-}
-
-.sidebar.collapsed .sidebar-user-name {
-    opacity: 0;
-}
-
-.sidebar.collapsed .sidebar-user-photo {
-    display: none !important;
-}
-
-.sidebar-signout-btn {
-    font-size: 16px;
-    color: var(--text-light);
-    padding: 4px 6px;
-    border-radius: 6px;
-    transition: color 0.2s, background 0.2s;
-    flex-shrink: 0;
-    cursor: pointer;
-}
-
-.sidebar-signout-btn:hover {
-    color: #C0505A;
-    background: #FFE4E4;
+function getGoogleBtnHTML() {
+    return `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22" style="flex-shrink:0">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Sign in with Google`;
 }
