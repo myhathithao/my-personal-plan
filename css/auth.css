@@ -31,7 +31,10 @@ function initFirebase() {
     }
 
     try {
-        firebase.initializeApp(FIREBASE_CONFIG);
+        // Only initialize if not already done (prevents "already exists" error on hot reload)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+        }
         db = firebase.firestore();
         firestoreReady = true;
 
@@ -98,12 +101,6 @@ async function signInWithGoogle() {
 async function signOutUser() {
     // Clear guest mode session flag
     sessionStorage.removeItem('guestMode');
-
-    // Flush any pending writes before signing out
-    if (firestoreReady && currentUser) {
-        await flushLocalToFirestore(currentUser.uid);
-    }
-
     try {
         if (firestoreReady && currentUser) {
             await firebase.auth().signOut();
@@ -120,40 +117,7 @@ async function signOutUser() {
 
 /* ── Firestore Sync ────────────────────────────────────────── */
 
-// Push ALL localStorage keys to Firestore (called before sign-out to guarantee sync)
-async function flushLocalToFirestore(uid) {
-    if (!db || !uid) return;
-    const APP_KEYS = [
-        'diaries', 'habits', 'habitLog', 'todos',
-        'weeklyGoal', 'weeklyTasks', 'yearGoal',
-        'goals', 'planCards', 'ideas', 'bigGoals',
-        'pomoCount', 'pomoTasks', 'reminders', 'colorTheme',
-        'sidebarCollapsed'
-    ];
-    const writes = [];
-    for (const key of APP_KEYS) {
-        const raw = localStorage.getItem(key);
-        if (raw !== null) {
-            const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
-            writes.push(
-                db.collection('users').doc(uid)
-                    .collection('data').doc(docId)
-                    .set({ k: key, v: raw, t: firebase.firestore.FieldValue.serverTimestamp() })
-                    .catch(e => console.warn('Flush write failed for', key, e))
-            );
-        }
-    }
-    try {
-        await Promise.all(writes);
-        console.log('✅ All data flushed to Firestore before sign-out');
-    } catch (e) {
-        console.warn('Flush error:', e);
-    }
-}
-
 // Pull all of the user's Firestore docs into localStorage
-// Only overwrites a local key if the Firestore copy is newer (has a server timestamp)
-// or if the key doesn't exist locally yet.
 async function syncFromFirestore(uid) {
     if (!db) return;
     const snapshot = await db
@@ -163,30 +127,20 @@ async function syncFromFirestore(uid) {
     snapshot.forEach(doc => {
         const { k, v } = doc.data();
         if (k && v !== undefined) {
-            // Always restore — localStorage was NOT cleared on sign-out
-            // so this merges cloud data with local data.
-            // We only write if the key is truly absent locally.
-            const existing = localStorage.getItem(k);
-            if (existing === null) {
-                // Key missing locally → restore from cloud
-                localStorage.setItem(k, v);
-            }
-            // If key already exists locally, keep the local copy
-            // (it may be newer than what's in Firestore)
+            localStorage.setItem(k, v); // v is already JSON-stringified
         }
     });
 }
 
 // Write one key→value to Firestore (called from Storage.set)
+// Non-blocking — errors are logged so you can see if rules are blocking writes
 function pushToFirestore(key, jsonStr) {
     if (!firestoreReady || !db || !currentUser) return;
-    const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
+    const docId = key.replace(/\//g, '|').replace(/\\/g, '|'); // Firestore doc IDs can't have /
     db.collection('users').doc(currentUser.uid)
         .collection('data').doc(docId)
         .set({ k: key, v: jsonStr, t: firebase.firestore.FieldValue.serverTimestamp() })
-        .catch(e => {
-            console.warn('⚠️ Firestore write failed for key:', key, e.message || e);
-        });
+        .catch(e => console.warn('Firestore write failed for key', key, e));
 }
 
 /* ── UI Helpers ────────────────────────────────────────────── */
