@@ -38,9 +38,30 @@ function initApp() {
         appInitialized = true;
     }
 
-    // Always refresh dashboard on login (picks up newly synced data)
-    refreshDashboard();
+    // Always refresh ALL module UIs after login (picks up freshly synced cloud data)
+    refreshAllModules();
     navigateTo('dashboard');
+}
+
+/* ── Re-render every module from current localStorage state ── */
+/* Called after Firestore sync so cloud data is always displayed */
+function refreshAllModules() {
+    refreshDashboard();
+    // Re-render modules that may have been initialized with stale data
+    if (typeof renderHabitGrid === 'function') renderHabitGrid();
+    if (typeof renderHabitChips === 'function') renderHabitChips();
+    if (typeof renderBoard === 'function') renderBoard();
+    if (typeof renderBigGoals === 'function') renderBigGoals();
+    if (typeof renderIdeas === 'function') renderIdeas();
+    if (typeof renderDiaryHistory === 'function') renderDiaryHistory();
+    // Re-render year goal display
+    const yearGoalDisplay = document.getElementById('yearGoalDisplay');
+    if (yearGoalDisplay && typeof Storage !== 'undefined') {
+        const goal = Storage.get('yearGoal', '');
+        yearGoalDisplay.innerHTML = goal
+            ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${goal.replace(/\n/g, '<br>')}</p>`
+            : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
+    }
 }
 
 /* ── Greeting ─────────────────────────────────────────────── */
