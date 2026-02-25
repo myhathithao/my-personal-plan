@@ -9,14 +9,8 @@
    - signOutUser() → flushes data to cloud then signs out
    ============================================================ */
 
-/* All localStorage keys the app uses — used for pre-sign-out flush */
-const APP_STORAGE_KEYS = [
-    'diaries', 'habits', 'habitLog', 'todos',
-    'weeklyGoal', 'weeklyTasks', 'yearGoal',
-    'goals', 'planCards', 'ideas', 'bigGoals',
-    'pomoCount', 'pomoTasks', 'reminders',
-    'colorTheme', 'sidebarCollapsed'
-];
+/* Keys to EXCLUDE from cloud sync (not user data) */
+const SYNC_EXCLUDE_KEYS = new Set(['guestMode']);
 
 let db = null;
 let currentUser = null;
@@ -137,22 +131,28 @@ async function signOutUser() {
 /* ── Firestore Sync ────────────────────────────────────────── */
 
 /**
- * Push ALL known localStorage keys to Firestore in parallel.
+ * Push ALL localStorage keys to Firestore in parallel.
  * Called before sign-out to guarantee the cloud copy is up to date.
+ * Scans localStorage dynamically so dynamic date-based keys are included.
  */
 async function flushAllToFirestore(uid) {
     if (!db || !uid) return;
-    const writes = APP_STORAGE_KEYS
-        .filter(key => localStorage.getItem(key) !== null)
-        .map(key => {
-            const raw = localStorage.getItem(key);
-            const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
-            return db.collection('users').doc(uid)
+    const writes = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || SYNC_EXCLUDE_KEYS.has(key)) continue;
+        const raw = localStorage.getItem(key);
+        if (raw === null) continue;
+        const docId = key.replace(/\//g, '|').replace(/\\/g, '|').replace(/\./g, '_');
+        writes.push(
+            db.collection('users').doc(uid)
                 .collection('data').doc(docId)
-                .set({ k: key, v: raw, t: firebase.firestore.FieldValue.serverTimestamp() });
-        });
+                .set({ k: key, v: raw, t: firebase.firestore.FieldValue.serverTimestamp() })
+                .catch(e => console.warn('⚠️ Flush failed for key:', key, e.message))
+        );
+    }
     await Promise.all(writes);
-    console.log('✅ Data flushed to Firestore before sign-out.');
+    console.log(`✅ Flushed ${writes.length} keys to Firestore before sign-out.`);
 }
 
 /**
