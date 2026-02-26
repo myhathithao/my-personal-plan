@@ -8,7 +8,10 @@
    - pushToFirestore(key, jsonStr) → called by storage.js on every write
    - signOutUser() → flushes data to cloud then signs out
    ============================================================ */
-
+// Hàm chuẩn hóa ID để mọi thiết bị đều tìm thấy cùng một dữ liệu
+function _getDocId(key) {
+    return key.replace(/[\/\.#\[\]\\]/g, '|');
+}
 /* Keys to EXCLUDE from cloud sync (not user data) */
 const SYNC_EXCLUDE_KEYS = new Set(['guestMode']);
 
@@ -42,23 +45,24 @@ function initFirebase() {
         firestoreReady = true;
 
         // Listen for auth state changes
-        firebase.auth().onAuthStateChanged(async (user) => {
-            if (user) {
-                currentUser = user;
-                showLoadingState(true);
-                try {
-                    await syncFromFirestore(user.uid);
-                } catch (e) {
-                    console.warn('Firestore sync failed, using local data:', e);
-                }
-                showLoadingState(false);
-                showApp(user);
-                if (typeof initApp === 'function') initApp();
-            } else {
-                currentUser = null;
-                showLoginScreen();
-            }
-        });
+       firebase.auth().onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
+        showLoadingState(true);
+        try {
+            await syncFromFirestore(user.uid); // Tải dữ liệu
+            await migrateFirestoreData();     // Tự động sửa lỗi tên (nếu có)
+        } catch (e) {
+            console.warn('Sync/Migration failed:', e);
+        }
+        showLoadingState(false);
+        showApp(user);
+        if (typeof initApp === 'function') initApp();
+    } else {
+        currentUser = null;
+        showLoginScreen();
+    }
+});
     } catch (e) {
         console.error('Firebase init error:', e);
         showConfigWarning('Firebase init failed: ' + e.message);
@@ -143,7 +147,7 @@ async function flushAllToFirestore(uid) {
         if (!key || SYNC_EXCLUDE_KEYS.has(key)) continue;
         const raw = localStorage.getItem(key);
         if (raw === null) continue;
-        const docId = key.replace(/\//g, '|').replace(/\\/g, '|').replace(/\./g, '_');
+        const docId = _getDocId(key);
         writes.push(
             db.collection('users').doc(uid)
                 .collection('data').doc(docId)
@@ -188,11 +192,70 @@ async function syncFromFirestore(uid) {
  */
 function pushToFirestore(key, jsonStr) {
     if (!firestoreReady || !db || !currentUser) return;
-    const docId = key.replace(/\//g, '|').replace(/\\/g, '|');
+    const docId = _getDocId(key);
     db.collection('users').doc(currentUser.uid)
         .collection('data').doc(docId)
         .set({ k: key, v: jsonStr, t: firebase.firestore.FieldValue.serverTimestamp() })
         .catch(e => console.warn('⚠️ Firestore write failed for key:', key, '—', e.message));
+}
+/**
+ * One-time migration to fix mismatched Firestore document IDs.
+ * It reads all docs, determines the correct standardized ID, 
+ * and moves data if the ID doesn't match.
+ */
+
+async function migrateFirestoreData() {
+    if (!db || !currentUser) {
+        console.error("❌ You must be signed in to migrate data.");
+        return;
+    }
+
+    console.log("🚀 Starting data migration...");
+    const userDataRef = db.collection('users').doc(currentUser.uid).collection('data');
+    const snapshot = await userDataRef.get();
+    
+    if (snapshot.empty) {
+        console.log("Checking... No data found to migrate.");
+        return;
+    }
+
+    const batch = db.batch();
+    let moveCount = 0;
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const currentId = doc.id;
+        const key = data.k;
+
+        if (!key) return;
+
+        // Calculate what the ID SHOULD be using our new standard
+        const correctId = _getDocId(data.k);
+
+        if (currentId !== correctId) {
+            console.log(`Moving [${key}]: ${currentId} -> ${correctId}`);
+            
+            // Create new doc with correct ID
+            const newDocRef = userDataRef.doc(correctId);
+            batch.set(newDocRef, {
+                ...data,
+                t: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Delete the old, incorrectly named doc
+            batch.delete(doc.ref);
+            moveCount++;
+        }
+    });
+
+    if (moveCount > 0) {
+        await batch.commit();
+        console.log(`✅ Migration complete! Moved ${moveCount} items.`);
+        // Refresh the UI to show the "restored" data
+        if (typeof refreshAllModules === 'function') refreshAllModules();
+    } else {
+        console.log("✨ All data is already standardized. No changes needed.");
+    }
 }
 
 /* ── UI Helpers ────────────────────────────────────────────── */
@@ -256,3 +319,4 @@ function getGoogleBtnHTML() {
     </svg>
     Sign in with Google`;
 }
+
