@@ -17,15 +17,15 @@ function initApp() {
         }
 
         // Init all feature modules
-        if (typeof initQuotes === 'function') initQuotes();
-        if (typeof initGoals === 'function') initGoals();
-        if (typeof initCalendar === 'function') initCalendar();
-        if (typeof initIdeas === 'function') initIdeas();
-        if (typeof initHabits === 'function') initHabits();
-        if (typeof initDiary === 'function') initDiary();
-        if (typeof initStats === 'function') initStats();
-        if (typeof initPomodoro === 'function') initPomodoro();
-        if (typeof initReminders === 'function') initReminders();
+        initQuotes();
+        initGoals();
+        initCalendar();
+        initIdeas();
+        initHabits();
+        initDiary();
+        initStats();
+        initPomodoro();
+        initReminders();
 
         // Wire up navigation now that DOM is ready
         setupNavigation();
@@ -46,21 +46,22 @@ function initApp() {
 /* ── Re-render every module from current localStorage state ── */
 /* Called after Firestore sync so cloud data is always displayed */
 function refreshAllModules() {
-    // 1. Refresh the dashboard components
     refreshDashboard();
-
-    // 2. Refresh Module UIs (Checking for existence to prevent errors)
-    // Updated naming convention to match specific module files
-    if (typeof renderYearGoalText === 'function') renderYearGoalText(); // From goals.js
-    if (typeof renderBigGoalsList === 'function') renderBigGoalsList(); // From stats.js
+    // Re-render modules that may have been initialized with stale data
     if (typeof renderHabitGrid === 'function') renderHabitGrid();
     if (typeof renderHabitChips === 'function') renderHabitChips();
     if (typeof renderBoard === 'function') renderBoard();
+    if (typeof renderBigGoals === 'function') renderBigGoals();
     if (typeof renderIdeas === 'function') renderIdeas();
     if (typeof renderDiaryHistory === 'function') renderDiaryHistory();
-    if (typeof renderCal === 'function') renderCal();
-    if (typeof renderPomoTasks === 'function') renderPomoTasks();
-    if (typeof renderPomoTimer === 'function') renderPomoTimer();
+    // Re-render year goal display
+    const yearGoalDisplay = document.getElementById('yearGoalDisplay');
+    if (yearGoalDisplay && typeof Storage !== 'undefined') {
+        const goal = Storage.get('yearGoal', '');
+        yearGoalDisplay.innerHTML = goal
+            ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${goal.replace(/\n/g, '<br>')}</p>`
+            : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
+    }
 }
 
 /* ── Greeting ─────────────────────────────────────────────── */
@@ -73,10 +74,10 @@ function getGreeting() {
 
 /* ── Dashboard refresh ────────────────────────────────────── */
 function refreshDashboard() {
-    if (typeof renderDashHabits === 'function') renderDashHabits();
-    if (typeof renderDashTodos === 'function') renderDashTodos();
-    if (typeof renderMissedTasks === 'function') renderMissedTasks();
-    if (typeof renderWeeklyGoal === 'function') renderWeeklyGoal();
+    renderDashHabits();
+    renderDashTodos();
+    renderMissedTasks();
+    renderWeeklyGoal();
 }
 
 /* ── Page navigation ──────────────────────────────────────── */
@@ -89,21 +90,11 @@ function navigateTo(page) {
     const navEl = document.getElementById('nav-' + page);
     if (navEl) navEl.classList.add('active');
 
-    // Trigger specific renders when entering a page
     if (page === 'dashboard') refreshDashboard();
-    if (page === 'habits') { 
-        if (typeof renderHabitGrid === 'function') renderHabitGrid(); 
-        if (typeof renderHabitChips === 'function') renderHabitChips(); 
-    }
-    if (page === 'diary') {
-        if (typeof renderDiaryHistory === 'function') renderDiaryHistory();
-    }
-    if (page === 'stats') {
-        if (typeof renderBigGoalsList === 'function') renderBigGoalsList();
-    }
-    if (page === 'ideas') {
-        if (typeof renderIdeas === 'function') renderIdeas();
-    }
+    if (page === 'habits') { renderHabitGrid(); renderHabitChips(); }
+    if (page === 'diary') renderDiaryHistory();
+    if (page === 'stats') renderBigGoals();
+    if (page === 'ideas') renderIdeas();
 }
 
 /* ── Navigation wiring ────────────────────────────────────── */
@@ -157,21 +148,21 @@ function initTheme() {
 
 /* ── Bootstrap ────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-    // Theme applies immediately
+    // Theme applies immediately (login screen also benefits)
     initTheme();
 
-    // Sidebar collapse
+    // Sidebar collapse (works before login too)
     setupSidebar();
 
-    // Sign-out button
+    // Sign-out button in sidebar
     document.getElementById('signOutBtn')?.addEventListener('click', signOutUser);
 
-    // Google sign-in
+    // Google sign-in button on login overlay
     document.getElementById('googleSignInBtn')?.addEventListener('click', signInWithGoogle);
 
-    // Guest mode
+    // Guest / browser-only mode button
     document.getElementById('guestModeBtn')?.addEventListener('click', continueAsGuest);
 
-    // Firebase auth logic starts here
+    // Firebase auth (calls initApp() once user is authenticated)
     initFirebase();
 });
