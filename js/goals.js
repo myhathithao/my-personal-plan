@@ -24,6 +24,29 @@ const EMOJI_PALETTE = [
 ];
 
 // ─── Year Goal ───────────────────────────────────────────────────────────────
+
+/**
+ * RENDER FUNCTION (GLOBAL SCOPE)
+ * We move this out so app.js can call it during the refresh cycle.
+ * Name changed to renderBigGoals to match app.js
+ */
+function renderBigGoals() {
+    const yearDisplay = document.getElementById('yearGoalDisplay');
+    if (!yearDisplay) return;
+
+    // Get the freshly synced data from Storage
+    const goal = Storage.get('yearGoal', '');
+    
+    // Display in English as requested
+    yearDisplay.innerHTML = goal
+        ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${escapeHtml(goal).replace(/\n/g, '<br>')}</p>`
+        : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
+}
+
+/**
+ * INITIALIZATION FUNCTION
+ * Sets up listeners and does the first render.
+ */
 function initYearGoal() {
     const yearDisplay = document.getElementById('yearGoalDisplay');
     const yearInput = document.getElementById('yearGoalInput');
@@ -32,13 +55,8 @@ function initYearGoal() {
     const cancelBtn = document.getElementById('cancelYearGoalBtn');
     const actionsDiv = document.getElementById('yearGoalActions');
 
-    function renderYearGoal() {
-        const goal = Storage.get('yearGoal', '');
-        yearDisplay.innerHTML = goal
-            ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${escapeHtml(goal).replace(/\n/g, '<br>')}</p>`
-            : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
-    }
-    renderYearGoal();
+    // Perform initial render
+    renderBigGoals();
 
     editBtn.addEventListener('click', () => {
         yearInput.value = Storage.get('yearGoal', '');
@@ -57,10 +75,12 @@ function initYearGoal() {
     }
 
     saveBtn.addEventListener('click', () => {
-        Storage.set('yearGoal', yearInput.value.trim());
-        renderYearGoal();
+        const value = yearInput.value.trim();
+        Storage.set('yearGoal', value); // This triggers pushToFirestore automatically
+        renderBigGoals(); // Update UI immediately
         cancelYearEdit();
     });
+
     cancelBtn.addEventListener('click', cancelYearEdit);
 }
 
@@ -300,3 +320,4 @@ function initGoals() {
     initTemplateChips();
     renderBoard();
 }
+
