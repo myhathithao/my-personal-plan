@@ -3,95 +3,11 @@
 let editingBigGoalId = null;
 let editingSubTaskGoalId = null;
 
-function initStats() {
-    document.getElementById('addBigGoalBtn').addEventListener('click', () => openBigGoalModal());
-    document.getElementById('saveBigGoalBtn').addEventListener('click', saveBigGoal);
-    document.getElementById('cancelBigGoalBtn').addEventListener('click', () => document.getElementById('bigGoalModal').classList.add('hidden'));
-    document.getElementById('saveSubTaskBtn').addEventListener('click', saveSubTask);
-    document.getElementById('cancelSubTaskBtn').addEventListener('click', () => document.getElementById('subTaskModal').classList.add('hidden'));
-    renderBigGoals();
-}
-
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function getBigGoals() { return Storage.get('bigGoals', []); }
-function setBigGoals(goals) { Storage.set('bigGoals', goals); }
-
-function openBigGoalModal(goalId = null) {
-    editingBigGoalId = goalId;
-    const modal = document.getElementById('bigGoalModal');
-    const titleInput = document.getElementById('bigGoalTitle');
-    if (goalId !== null) {
-        const goal = getBigGoals().find(g => g.id === goalId);
-        titleInput.value = goal ? goal.title : '';
-        document.getElementById('bigGoalModalTitle').textContent = 'Edit Goal ✏️';
-    } else {
-        titleInput.value = '';
-        document.getElementById('bigGoalModalTitle').textContent = 'New Big Goal 🎯';
-    }
-    modal.classList.remove('hidden');
-    titleInput.focus();
-}
-
-function saveBigGoal() {
-    const title = document.getElementById('bigGoalTitle').value.trim();
-    if (!title) return;
-    const goals = getBigGoals();
-    if (editingBigGoalId !== null) {
-        const idx = goals.findIndex(g => g.id === editingBigGoalId);
-        if (idx > -1) goals[idx].title = title;
-    } else {
-        goals.push({ id: Date.now(), title, subTasks: [] });
-    }
-    setBigGoals(goals);
-    document.getElementById('bigGoalModal').classList.add('hidden');
-    editingBigGoalId = null;
-    renderBigGoals();
-}
-
-function deleteBigGoal(id) {
-    if (!confirm('Delete this goal and all its sub-tasks?')) return;
-    setBigGoals(getBigGoals().filter(g => g.id !== id));
-    renderBigGoals();
-}
-
-function openSubTaskModal(goalId) {
-    editingSubTaskGoalId = goalId;
-    document.getElementById('subTaskName').value = '';
-    document.getElementById('subTaskDeadline').value = '';
-    document.getElementById('subTaskModal').classList.remove('hidden');
-    document.getElementById('subTaskName').focus();
-}
-
-function saveSubTask() {
-    const name = document.getElementById('subTaskName').value.trim();
-    if (!name) return;
-    const deadline = document.getElementById('subTaskDeadline').value;
-    const goals = getBigGoals();
-    const goal = goals.find(g => g.id === editingSubTaskGoalId);
-    if (!goal) return;
-    goal.subTasks.push({ id: Date.now(), name, deadline, done: false });
-    setBigGoals(goals);
-    document.getElementById('subTaskModal').classList.add('hidden');
-    editingSubTaskGoalId = null;
-    renderBigGoals();
-}
-
-function toggleSubTask(goalId, taskId, done) {
-    const goals = getBigGoals();
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const task = goal.subTasks.find(t => t.id === taskId);
-    if (task) task.done = done;
-    setBigGoals(goals);
-    renderBigGoals();
-}
-
-function deleteSubTask(goalId, taskId) {
-    const goals = getBigGoals();
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    goal.subTasks = goal.subTasks.filter(t => t.id !== taskId);
-    setBigGoals(goals);
-    renderBigGoals();
+function setBigGoals(goals) { 
+    // Storage.set triggers pushToFirestore for cross-device sync
+    Storage.set('bigGoals', goals); 
 }
 
 function getDeadlineClass(deadlineStr) {
@@ -109,8 +25,31 @@ function formatDeadline(str) {
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function renderBigGoals() {
+// ── Initialization ────────────────────────────────────────────────────────────
+function initStats() {
+    document.getElementById('addBigGoalBtn')?.addEventListener('click', () => openBigGoalModal());
+    document.getElementById('saveBigGoalBtn')?.addEventListener('click', saveBigGoal);
+    document.getElementById('cancelBigGoalBtn')?.addEventListener('click', () => {
+        document.getElementById('bigGoalModal').classList.add('hidden');
+    });
+    document.getElementById('saveSubTaskBtn')?.addEventListener('click', saveSubTask);
+    document.getElementById('cancelSubTaskBtn')?.addEventListener('click', () => {
+        document.getElementById('subTaskModal').classList.add('hidden');
+    });
+
+    renderBigGoalsList();
+}
+
+// ── Render Functions (Global Scope - Pattern from diary.js) ──────────────────
+
+/**
+ * Renders the list of projects and their sub-tasks.
+ * Renamed to renderBigGoalsList to avoid conflict with Year Goal text.
+ */
+function renderBigGoalsList() {
     const list = document.getElementById('bigGoalsList');
+    if (!list) return; // Defensive check for app.js refresh cycle
+
     const goals = getBigGoals();
 
     if (!goals.length) {
@@ -164,4 +103,100 @@ function renderBigGoals() {
         </div>
       </div>`;
     }).join('');
+}
+
+// ── Data Actions (Using Storage.set to trigger Cloud Sync) ─────────────────────
+
+function openBigGoalModal(goalId = null) {
+    editingBigGoalId = goalId;
+    const modal = document.getElementById('bigGoalModal');
+    const titleInput = document.getElementById('bigGoalTitle');
+    const modalTitle = document.getElementById('bigGoalModalTitle');
+
+    if (!modal || !titleInput) return;
+
+    if (goalId !== null) {
+        const goal = getBigGoals().find(g => g.id === goalId);
+        titleInput.value = goal ? goal.title : '';
+        if (modalTitle) modalTitle.textContent = 'Edit Goal ✏️';
+    } else {
+        titleInput.value = '';
+        if (modalTitle) modalTitle.textContent = 'New Big Goal 🎯';
+    }
+    modal.classList.remove('hidden');
+    titleInput.focus();
+}
+
+function saveBigGoal() {
+    const title = document.getElementById('bigGoalTitle').value.trim();
+    if (!title) return;
+    
+    const goals = getBigGoals();
+    if (editingBigGoalId !== null) {
+        const idx = goals.findIndex(g => g.id === editingBigGoalId);
+        if (idx > -1) goals[idx].title = title;
+    } else {
+        goals.push({ id: Date.now(), title, subTasks: [] });
+    }
+    
+    setBigGoals(goals); // Cloud Sync via Storage.set
+    document.getElementById('bigGoalModal').classList.add('hidden');
+    editingBigGoalId = null;
+    renderBigGoalsList();
+}
+
+function deleteBigGoal(id) {
+    if (!confirm('Delete this goal and all its sub-tasks?')) return;
+    setBigGoals(getBigGoals().filter(g => g.id !== id)); // Cloud Sync
+    renderBigGoalsList();
+}
+
+function openSubTaskModal(goalId) {
+    editingSubTaskGoalId = goalId;
+    const nameInput = document.getElementById('subTaskName');
+    if (nameInput) {
+        nameInput.value = '';
+        document.getElementById('subTaskDeadline').value = '';
+        document.getElementById('subTaskModal').classList.remove('hidden');
+        nameInput.focus();
+    }
+}
+
+function saveSubTask() {
+    const name = document.getElementById('subTaskName').value.trim();
+    if (!name) return;
+    
+    const deadline = document.getElementById('subTaskDeadline').value;
+    const goals = getBigGoals();
+    const goal = goals.find(g => g.id === editingSubTaskGoalId);
+    
+    if (!goal) return;
+    goal.subTasks.push({ id: Date.now(), name, deadline, done: false });
+    
+    setBigGoals(goals); // Cloud Sync
+    document.getElementById('subTaskModal').classList.add('hidden');
+    editingSubTaskGoalId = null;
+    renderBigGoalsList();
+}
+
+function toggleSubTask(goalId, taskId, done) {
+    const goals = getBigGoals();
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    const task = goal.subTasks.find(t => t.id === taskId);
+    if (task) task.done = done;
+    
+    setBigGoals(goals); // Cloud Sync
+    renderBigGoalsList();
+}
+
+function deleteSubTask(goalId, taskId) {
+    const goals = getBigGoals();
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    goal.subTasks = goal.subTasks.filter(t => t.id !== taskId);
+    setBigGoals(goals); // Cloud Sync
+    renderBigGoalsList();
 }
