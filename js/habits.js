@@ -1,25 +1,34 @@
-/* habits.js — Habit Tracker (no defaults, details field, flipped grid: dates=rows, habits=cols) */
+/* habits.js — Habit Tracker (Cloud-Sync Compatible) */
+
 const HABIT_EMOJIS = ['🏃‍♀️', '💧', '📚', '😴', '🧘', '🥗', '✍️', '🎨', '🎵', '🌿', '🏋️', '🚴', '🛁', '💊', '🧹', '📖', '🌞', '🍎', '🌙', '☕', '🧠', '🫶', '✨', '💪'];
 
 let habitMonth, habitYear;
 let editingHabitId = null;
+let selectedEmoji = '✨';
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function getHabits() { return Storage.get('habits', []); }
+function habitDoneKey(hid, y, m, d) {
+    return `h-${hid}-${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// ── Initialization ────────────────────────────────────────────────────────────
 function initHabits() {
     const now = new Date();
-    habitMonth = now.getMonth();
-    habitYear = now.getFullYear();
+    habitMonth = (habitMonth !== undefined) ? habitMonth : now.getMonth();
+    habitYear = habitYear || now.getFullYear();
 
-    // Start with empty list if never set
     if (Storage.get('habits') === null) Storage.set('habits', []);
 
-    document.getElementById('addHabitBtn').addEventListener('click', () => openHabitModal());
-    document.getElementById('saveNewHabitBtn').addEventListener('click', saveHabit);
-    document.getElementById('cancelNewHabitBtn').addEventListener('click', closeHabitModal);
-    document.getElementById('habitMonthPrev').addEventListener('click', () => {
+    document.getElementById('addHabitBtn')?.addEventListener('click', () => openHabitModal());
+    document.getElementById('saveNewHabitBtn')?.addEventListener('click', saveHabit);
+    document.getElementById('cancelNewHabitBtn')?.addEventListener('click', closeHabitModal);
+    
+    document.getElementById('habitMonthPrev')?.addEventListener('click', () => {
         habitMonth--; if (habitMonth < 0) { habitMonth = 11; habitYear--; }
         renderHabitGrid(); renderHabitMonthLabel();
     });
-    document.getElementById('habitMonthNext').addEventListener('click', () => {
+    document.getElementById('habitMonthNext')?.addEventListener('click', () => {
         habitMonth++; if (habitMonth > 11) { habitMonth = 0; habitYear++; }
         renderHabitGrid(); renderHabitMonthLabel();
     });
@@ -29,71 +38,18 @@ function initHabits() {
     renderHabitMonthLabel();
 }
 
-function getHabits() { return Storage.get('habits', []); }
-function habitDoneKey(hid, y, m, d) {
-    return `h-${hid}-${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
+// ── Render Functions (Global Scope - Pattern from diary.js) ──────────────────
 
-let selectedEmoji = '✨';
-
-function openHabitModal(habit = null) {
-    editingHabitId = habit ? habit.id : null;
-    document.getElementById('habitModalTitle').textContent = habit ? 'Edit Habit ✏️' : 'New Habit ✨';
-    document.getElementById('newHabitName').value = habit ? habit.name : '';
-    document.getElementById('newHabitDetails').value = habit ? (habit.details || '') : '';
-    selectedEmoji = habit ? (habit.emoji || '✨') : '✨';
-    renderEmojiPicker();
-    document.getElementById('addHabitModal').classList.remove('hidden');
-    document.getElementById('newHabitName').focus();
-}
-
-function closeHabitModal() {
-    document.getElementById('addHabitModal').classList.add('hidden');
-    editingHabitId = null;
-}
-
-function renderEmojiPicker() {
-    const grid = document.getElementById('emojiGrid');
-    grid.innerHTML = HABIT_EMOJIS.map(e =>
-        `<div class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" data-e="${e}">${e}</div>`
-    ).join('');
-    grid.querySelectorAll('.emoji-opt').forEach(el => {
-        el.addEventListener('click', () => {
-            selectedEmoji = el.dataset.e;
-            grid.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
-            el.classList.add('selected');
-        });
-    });
-}
-
-function saveHabit() {
-    const name = document.getElementById('newHabitName').value.trim();
-    if (!name) return;
-    const details = document.getElementById('newHabitDetails').value.trim();
-    const habits = getHabits();
-
-    if (editingHabitId !== null) {
-        const idx = habits.findIndex(h => h.id === editingHabitId);
-        if (idx > -1) { habits[idx].name = name; habits[idx].details = details; habits[idx].emoji = selectedEmoji; }
-    } else {
-        habits.push({ id: Date.now(), name, details, emoji: selectedEmoji });
-    }
-    Storage.set('habits', habits);
-    closeHabitModal();
-    renderHabitChips();
-    renderHabitGrid();
-    renderDashHabits();
-}
-
-function deleteHabit(id) {
-    Storage.set('habits', getHabits().filter(h => h.id !== id));
-    renderHabitChips();
-    renderHabitGrid();
-    renderDashHabits();
+function renderHabitMonthLabel() {
+    const label = document.getElementById('habitMonthLabel');
+    if (!label) return;
+    label.textContent = new Date(habitYear, habitMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
 function renderHabitChips() {
     const list = document.getElementById('habitList');
+    if (!list) return; // Defensive check for page navigation
+    
     const habits = getHabits();
     if (!habits.length) {
         list.innerHTML = '<p class="empty-state" style="font-size:13px">No habits yet! Click + New to add one 🌱</p>';
@@ -114,18 +70,15 @@ function renderHabitChips() {
   `).join('');
 }
 
-function renderHabitMonthLabel() {
-    document.getElementById('habitMonthLabel').textContent =
-        new Date(habitYear, habitMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-}
-
-/* Flipped grid: rows = dates (1..daysInMonth), columns = habits */
 function renderHabitGrid() {
+    const grid = document.getElementById('habitGrid');
+    if (!grid) return; // Defensive check
+
     const habits = getHabits();
     const daysInMonth = new Date(habitYear, habitMonth + 1, 0).getDate();
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const grid = document.getElementById('habitGrid');
+    
     grid.innerHTML = '';
 
     if (!habits.length) {
@@ -137,7 +90,7 @@ function renderHabitGrid() {
     table.className = 'habit-flipped-grid';
     table.style.gridTemplateColumns = `60px repeat(${habits.length}, minmax(48px,1fr))`;
 
-    // Header row: blank + habit names
+    // Header row
     const cornerCell = document.createElement('div');
     cornerCell.className = 'hf-header-corner';
     cornerCell.textContent = 'Date';
@@ -175,7 +128,7 @@ function renderHabitGrid() {
             if (!isFuture) {
                 cell.addEventListener('click', () => {
                     const cur = Storage.get(key, false);
-                    Storage.set(key, !cur);
+                    Storage.set(key, !cur); // Cloud Sync
                     cell.classList.toggle('hf-checked', !cur);
                     renderDashHabits();
                 });
@@ -183,14 +136,13 @@ function renderHabitGrid() {
             table.appendChild(cell);
         });
     }
-
     grid.appendChild(table);
 }
 
-// Dashboard mini habits (today)
 function renderDashHabits() {
     const container = document.getElementById('dashHabits');
     if (!container) return;
+    
     const habits = getHabits();
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
@@ -211,8 +163,81 @@ function renderDashHabits() {
     }).join('');
 }
 
+// ── Data Actions (Using Storage.set to trigger Cloud Sync) ─────────────────────
+
+function saveHabit() {
+    const name = document.getElementById('newHabitName').value.trim();
+    if (!name) return;
+    const details = document.getElementById('newHabitDetails').value.trim();
+    const habits = getHabits();
+
+    if (editingHabitId !== null) {
+        const idx = habits.findIndex(h => h.id === editingHabitId);
+        if (idx > -1) { 
+            habits[idx].name = name; 
+            habits[idx].details = details; 
+            habits[idx].emoji = selectedEmoji; 
+        }
+    } else {
+        habits.push({ id: Date.now(), name, details, emoji: selectedEmoji });
+    }
+    
+    Storage.set('habits', habits); // Cloud Sync
+    closeHabitModal();
+    renderHabitChips();
+    renderHabitGrid();
+    renderDashHabits();
+}
+
+function deleteHabit(id) {
+    if (!confirm("Are you sure you want to remove this habit?")) return;
+    Storage.set('habits', getHabits().filter(h => h.id !== id)); // Cloud Sync
+    renderHabitChips();
+    renderHabitGrid();
+    renderDashHabits();
+}
+
 function toggleDashHabit(hid, done) {
     const now = new Date();
     const key = habitDoneKey(hid, now.getFullYear(), now.getMonth(), now.getDate());
-    Storage.set(key, done);
+    Storage.set(key, done); // Cloud Sync
+    renderHabitGrid(); // Sync grid if user switches tabs
+    renderDashHabits();
+}
+
+// ── Habit Modal & Emoji Picker (Internal Logic) ──────────────────────────────
+
+function openHabitModal(habit = null) {
+    editingHabitId = habit ? habit.id : null;
+    const modal = document.getElementById('addHabitModal');
+    if (!modal) return;
+    
+    document.getElementById('habitModalTitle').textContent = habit ? 'Edit Habit ✏️' : 'New Habit ✨';
+    document.getElementById('newHabitName').value = habit ? habit.name : '';
+    document.getElementById('newHabitDetails').value = habit ? (habit.details || '') : '';
+    selectedEmoji = habit ? (habit.emoji || '✨') : '✨';
+    
+    renderEmojiPicker();
+    modal.classList.remove('hidden');
+    document.getElementById('newHabitName').focus();
+}
+
+function closeHabitModal() {
+    document.getElementById('addHabitModal')?.classList.add('hidden');
+    editingHabitId = null;
+}
+
+function renderEmojiPicker() {
+    const grid = document.getElementById('emojiGrid');
+    if (!grid) return;
+    grid.innerHTML = HABIT_EMOJIS.map(e =>
+        `<div class="emoji-opt${e === selectedEmoji ? ' selected' : ''}" data-e="${e}">${e}</div>`
+    ).join('');
+    grid.querySelectorAll('.emoji-opt').forEach(el => {
+        el.addEventListener('click', () => {
+            selectedEmoji = el.dataset.e;
+            grid.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
+            el.classList.add('selected');
+        });
+    });
 }
