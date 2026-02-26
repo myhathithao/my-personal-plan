@@ -1,4 +1,4 @@
-/* goals.js — Flexible Plan Board (Cloud-Sync Compatible) */
+/* goals.js — Flexible Plan Board */
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function escapeHtml(s) {
@@ -10,37 +10,20 @@ function uid() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// Soft accent colours for cards
+// Soft accent colours for cards (cycles through)
 const CARD_COLORS = [
     '#fda4af', '#fb923c', '#fbbf24', '#86efac',
     '#67e8f9', '#818cf8', '#f0abfc', '#94a3b8'
 ];
 
-// Emoji palette for picker
+// Emoji palette for new-card picker
 const EMOJI_PALETTE = [
     '🌸', '☀️', '🍂', '❄️', '🎯', '💪', '💼', '💰',
     '❤️', '📚', '🌱', '🏆', '😊', '🎮', '💬', '✨',
     '🚀', '🧘', '🎨', '🍀', '⭐', '📖', '🏋️', '🌙'
 ];
 
-// ─── Year Goal (Global Scope) ───────────────────────────────────────────────
-
-/**
- * Renders the big year goal text.
- * Renamed to renderYearGoalText to avoid conflict with project stats.
- */
-function renderYearGoalText() {
-    const yearDisplay = document.getElementById('yearGoalDisplay');
-    if (!yearDisplay) return; // Defensive check for app.js refresh cycle
-
-    const goal = Storage.get('yearGoal', '');
-    
-    // UI text in English as requested
-    yearDisplay.innerHTML = goal
-        ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${escapeHtml(goal).replace(/\n/g, '<br>')}</p>`
-        : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
-}
-
+// ─── Year Goal ───────────────────────────────────────────────────────────────
 function initYearGoal() {
     const yearDisplay = document.getElementById('yearGoalDisplay');
     const yearInput = document.getElementById('yearGoalInput');
@@ -49,10 +32,15 @@ function initYearGoal() {
     const cancelBtn = document.getElementById('cancelYearGoalBtn');
     const actionsDiv = document.getElementById('yearGoalActions');
 
-    // Initial render
-    renderYearGoalText();
+    function renderYearGoal() {
+        const goal = Storage.get('yearGoal', '');
+        yearDisplay.innerHTML = goal
+            ? `<p style="font-size:16px;line-height:1.6;color:var(--text-dark)">${escapeHtml(goal).replace(/\n/g, '<br>')}</p>`
+            : '<p class="empty-state">Click Edit to set your big goal for 2026! 🎉</p>';
+    }
+    renderYearGoal();
 
-    editBtn?.addEventListener('click', () => {
+    editBtn.addEventListener('click', () => {
         yearInput.value = Storage.get('yearGoal', '');
         yearInput.classList.remove('hidden');
         actionsDiv.classList.remove('hidden');
@@ -68,34 +56,26 @@ function initYearGoal() {
         yearDisplay.classList.remove('hidden');
     }
 
-    saveBtn?.addEventListener('click', () => {
-        const value = yearInput.value.trim();
-        Storage.set('yearGoal', value); // Triggers background cloud sync
-        renderYearGoalText();
+    saveBtn.addEventListener('click', () => {
+        Storage.set('yearGoal', yearInput.value.trim());
+        renderYearGoal();
         cancelYearEdit();
     });
-    
-    cancelBtn?.addEventListener('click', cancelYearEdit);
+    cancelBtn.addEventListener('click', cancelYearEdit);
 }
 
-// ─── Plan Board (Global Scope) ──────────────────────────────────────────────
-
+// ─── Plan Board ──────────────────────────────────────────────────────────────
 function getPlanBoard() {
     return Storage.get('planBoard', []);
 }
 function savePlanBoard(board) {
-    Storage.set('planBoard', board); // Triggers background cloud sync
+    Storage.set('planBoard', board);
 }
 
-/**
- * Renders the entire plan board.
- * Moved to global scope so app.js can call it during refreshAllModules().
- */
 function renderBoard() {
-    const container = document.getElementById('planBoard');
-    if (!container) return; // Defensive check
-
     const board = getPlanBoard();
+    const container = document.getElementById('planBoard');
+    if (!container) return;
 
     if (board.length === 0) {
         container.innerHTML = `
@@ -142,7 +122,7 @@ function renderBoard() {
             <button class="plan-item-add-btn btn-primary">Add</button>
           </div>`;
 
-        // Rename logic
+        // ── Title rename ──
         const titleInput = el.querySelector('.plan-card-title-input');
         titleInput.addEventListener('change', () => {
             const b = getPlanBoard();
@@ -150,10 +130,12 @@ function renderBoard() {
             if (c) { c.title = titleInput.value.trim() || c.title; savePlanBoard(b); }
         });
 
+        // ── Emoji click ──
         el.querySelector('.plan-card-emoji').addEventListener('click', () => {
             openEmojiPicker(card.id, el.querySelector('.plan-card-emoji'));
         });
 
+        // ── Delete card ──
         el.querySelector('.plan-card-delete').addEventListener('click', () => {
             if (!confirm(`Delete card "${card.title}"?`)) return;
             const b = getPlanBoard().filter(c => c.id !== card.id);
@@ -161,6 +143,7 @@ function renderBoard() {
             renderBoard();
         });
 
+        // ── Toggle item ──
         el.querySelectorAll('.plan-item-check').forEach(cb => {
             cb.addEventListener('change', () => {
                 const itemId = cb.closest('.plan-item').dataset.itemId;
@@ -173,6 +156,7 @@ function renderBoard() {
             });
         });
 
+        // ── Delete item ──
         el.querySelectorAll('.plan-item-delete').forEach(btn => {
             btn.addEventListener('click', () => {
                 const itemId = btn.closest('.plan-item').dataset.itemId;
@@ -182,6 +166,7 @@ function renderBoard() {
             });
         });
 
+        // ── Add item ──
         const itemInput = el.querySelector('.plan-item-input');
         const addItemBtn = el.querySelector('.plan-item-add-btn');
         function addNewItem() {
@@ -198,7 +183,7 @@ function renderBoard() {
     });
 }
 
-// ─── Emoji Picker ───────────────────────────────────────────────────────────
+// ─── Emoji Picker (inline popover) ───────────────────────────────────────────
 let _emojiPickerEl = null;
 function openEmojiPicker(cardId, anchorEl) {
     closeEmojiPicker();
@@ -239,8 +224,7 @@ function initNewCardModal() {
 
     let selectedEmoji = '📋';
 
-    if (!modal) return;
-
+    // Populate emoji picker in modal
     EMOJI_PALETTE.forEach(emoji => {
         const btn = document.createElement('button');
         btn.className = 'modal-emoji-btn';
@@ -253,7 +237,7 @@ function initNewCardModal() {
         emojiRow.appendChild(btn);
     });
 
-    addCardBtn?.addEventListener('click', () => {
+    addCardBtn.addEventListener('click', () => {
         titleInput.value = '';
         emojiRow.querySelectorAll('.modal-emoji-btn').forEach(b => b.classList.remove('selected'));
         selectedEmoji = '📋';
@@ -277,9 +261,9 @@ function initNewCardModal() {
         modal.classList.add('hidden');
     }
 
-    saveBtn?.addEventListener('click', saveNewCard);
+    saveBtn.addEventListener('click', saveNewCard);
     titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveNewCard(); });
-    cancelBtn?.addEventListener('click', () => modal.classList.add('hidden'));
+    cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 }
 
@@ -290,6 +274,7 @@ function initTemplateChips() {
             const emoji = chip.dataset.emoji;
             const title = chip.dataset.title;
             const board = getPlanBoard();
+            // Avoid duplicates
             if (board.some(c => c.title.toLowerCase() === title.toLowerCase())) {
                 chip.classList.add('chip-exists');
                 setTimeout(() => chip.classList.remove('chip-exists'), 1200);
